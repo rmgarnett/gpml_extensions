@@ -6,14 +6,11 @@
 void mexFunction(int nlhs, mxArray *plhs[],
 								 int nrhs, const mxArray *prhs[])
 {
-	double *hyperparameters, *in, *out, *training_points, *testing_points, 
-		*self_covariances, *cross_covariances, *hyperparameter;
+	double *hyperparameters, *train, *test, *out, *hyperparameter;
 
-	int num_points, num_training_points, num_testing_points, dim, i, j, k;
+	int num_train, num_test, dim, i, j, k;
 	double input_scale, output_scale;
 	double squared_distance = 0, difference;
-
-	char *string;
 
 	/* number of hyperparameters */
   if ((nlhs <= 1) && (nrhs == 0)) {
@@ -21,42 +18,40 @@ void mexFunction(int nlhs, mxArray *plhs[],
 		return;
 	}
 
+	train = mxGetPr(prhs[1]);
+	num_train = mxGetM(prhs[1]);
+	dim = mxGetN(prhs[1]);
+
 	/* minimal error checking */
 	if ((mxGetN(prhs[0]) * mxGetM(prhs[0])) != 2) {
 		mexErrMsgTxt("wrong number of hyperparameters!");
 		return;
 	}
 
-	/* grab hyperparamters, first is log(input_scale), second is
-		 log(output_scale) */
 	hyperparameters = mxGetPr(prhs[0]);
 	input_scale = exp(hyperparameters[0]);
 	output_scale = exp(2 * hyperparameters[1]);
 
 	/* training covariance */
-	if (nrhs == 2) {
-
-		num_points = mxGetM(prhs[1]);
-		dim = mxGetN(prhs[1]);
-		in = mxGetPr(prhs[1]);
-
-		plhs[0] = mxCreateDoubleMatrix(num_points, num_points, mxREAL);
+	if ((nrhs == 2) || ((nrhs == 3) && (mxGetNumberOfElements(prhs[2]) == 0))) {
+		plhs[0] = mxCreateDoubleMatrix(num_train, num_train, mxREAL);
 		out = mxGetPr(plhs[0]);
 		
-		for (i = 0; i < num_points; i++) {
-			for (j = i; j < num_points; j++) {
+		for (i = 0; i < num_train; i++) {
+			for (j = i; j < num_train; j++) {
 
 				squared_distance = 0;
 				for (k = 0; k < dim; k++) {
-					difference = (in[i + num_points * k] - 
-												in[j + num_points * k]) / input_scale;
+					difference = (train[i + num_train * k] - 
+												train[j + num_train * k]) / input_scale;
 					squared_distance += difference * difference;
 				}
 
-				/* symmetric output */
-				out[i + num_points * j] = 
+				out[i + num_train * j] = 
 					output_scale * exp(-squared_distance / 2);
-				out[j + num_points * i] = out[i + num_points * j];
+
+				/* symmetric output */
+				out[j + num_train * i] = out[i + num_train * j];
 			}
 		}
 		return;
@@ -65,30 +60,27 @@ void mexFunction(int nlhs, mxArray *plhs[],
 	/* test covariances */
 	else if (nrhs == 3) {
 
-		num_training_points = mxGetM(prhs[1]);
-		dim = mxGetN(prhs[1]);
-		training_points = mxGetPr(prhs[1]);
-
 		if (mxIsChar(prhs[2])) {
-			string = mxArrayToString(prhs[2]);
-			if (strcmp((const char *) string, "diag") == 0) { 
-				plhs[0] = mxCreateDoubleMatrix(num_training_points, 1, mxREAL);
-				self_covariances = mxGetPr(plhs[0]);
 
-				for (i = 0; i < num_training_points; i++)
-					self_covariances[i] = output_scale;
+			/* self covariances */
+			if (strcmp((const char *) mxArrayToString(prhs[2]), "diag") == 0) { 
+				plhs[0] = mxCreateDoubleMatrix(num_train, 1, mxREAL);
+				out = mxGetPr(plhs[0]);
 
+				for (i = 0; i < num_train; i++) {
+					out[i] = output_scale;
+				}
 				return;
 			}	 
+			/* a string but not 'diag' ? */
+			else {
+				mexErrMsgTxt("unacceptable argument, did you mean 'diag'?");
+				return;
+			}
 		}
-		else {
 
-			num_testing_points = mxGetM(prhs[2]);
-			testing_points = mxGetPr(prhs[2]);
-			
-			plhs[0] = 
-				mxCreateDoubleMatrix(num_training_points, num_testing_points, mxREAL);
-			cross_covariances = mxGetPr(plhs[0]);
+		/* cross covariances */
+		else {
 
 			/* more error checking */
 			if (mxGetN(prhs[2]) != dim) {
@@ -96,80 +88,140 @@ void mexFunction(int nlhs, mxArray *plhs[],
 				return;
 			}
 
-			for (i = 0; i < num_testing_points; i++) {
-				for (j = 0; j < num_training_points; j++) {
+			test = mxGetPr(prhs[2]);
+			num_test = mxGetM(prhs[2]);
+			
+			plhs[0] = mxCreateDoubleMatrix(num_train, num_test, mxREAL);
+			out = mxGetPr(plhs[0]);
+
+			for (i = 0; i < num_test; i++) {
+				for (j = 0; j < num_train; j++) {
 
 					squared_distance = 0;
 					for (k = 0; k < dim; k++) {
-						difference = (testing_points[i + num_testing_points * k] - 
-													training_points[j + num_training_points * k]) /
+						difference = (test[i + num_test * k] - 
+													train[j + num_train * k]) /
 							input_scale;
 						squared_distance += difference * difference;
 					}
 					
-					cross_covariances[j + num_training_points * i] = 
-						output_scale * exp(-squared_distance / 2);
+					out[j + num_train * i] = output_scale * exp(-squared_distance / 2);
 				}
 			}
-			return;
 		}
-		
+
 	}
 
 	/* derivatives with respect to hyperparamters */
 	else {
 
-		num_points = mxGetM(prhs[1]);
-		dim = mxGetN(prhs[1]);
-		in = mxGetPr(prhs[1]);
-
+		/* which hyperparameter to take derivative with respect to */
 		hyperparameter = mxGetPr(prhs[3]);
 		
-		plhs[0] = mxCreateDoubleMatrix(num_points, num_points, mxREAL);
-		out = mxGetPr(plhs[0]);
-		
-		/* input scale */
- 		if (hyperparameter[0] == 1) { 
+		/* diagonal derivatives */
+		if (mxIsChar(prhs[2])) {
+			if (strcmp((const char *) mxArrayToString(prhs[2]), "diag") == 0) { 
 
-			for (i = 0; i < num_points; i++) 
-				for (j = i; j < num_points; j++) {
-					
-					squared_distance = 0;
-					for (k = 0; k < dim; k++) {
-						difference = (in[i + num_points * k] - 
-													in[j + num_points * k]) / input_scale;
-						squared_distance += difference * difference;
+				plhs[0] = mxCreateDoubleMatrix(num_train, 1, mxREAL);
+				out = mxGetPr(plhs[0]);
+				
+				/* input scale */
+				if (hyperparameter[0] == 1) { 
+					for (i = 0; i < num_train; i++) {
+						out[i] = 0;
 					}
-					
-					/* symmetric output */
-					out[i + num_points * j] = 
-						output_scale * squared_distance * exp(-squared_distance / 2);
-					out[j + num_points * i] = out[i + num_points * j];
-					
+					return;
 				}
+				/* output scale */
+				else if (hyperparameter[0] == 2) {
+					for (i = 0; i < num_train; i++) {
+						out[i] = 2 * output_scale;
+					}
+					return;
+				}
+				else {
+					mexErrMsgTxt("hyperparameter index out of range!");
+					return;
+				}
+			}
+			/* a string but not 'diag' ? */
+			else {
+				mexErrMsgTxt("unacceptable argument, did you mean 'diag'?");
+				return;
+			}
 		}
 
-		/* output scale */
- 		else { 
-
-			for (i = 0; i < num_points; i++) 
-				for (j = i; j < num_points; j++) {
-					
-					squared_distance = 0;
-					for (k = 0; k < dim; k++) {
-						difference = (in[i + num_points * k] - 
-													in[j + num_points * k]) / input_scale;
-						squared_distance += difference * difference;
-					}
+		else {
+			
+			/* training derivatives */
+			if (mxGetNumberOfElements(prhs[2]) == 0) {
+				plhs[0] = mxCreateDoubleMatrix(num_train, num_train, mxREAL);
+				out = mxGetPr(plhs[0]);
+			
+				for (i = 0; i < num_train; i++) 
+					for (j = i; j < num_train; j++) {
 						
-					/* symmetric output */
-					out[i + num_points * j] = 
-						2 * output_scale * exp(-squared_distance / 2);
-					out[j + num_points * i] = out[i + num_points * j];
+						squared_distance = 0;
+						for (k = 0; k < dim; k++) {
+							difference = (train[i + num_train * k] - 
+														train[j + num_train * k]) / input_scale;
+							squared_distance += difference * difference;
+						}
+						
+						/* input scale */
+						if (hyperparameter[0] == 1) {
+							out[i + num_train * j] = 
+								output_scale * squared_distance * exp(-squared_distance / 2);
+						}
+						/* output scale */
+						else if (hyperparameter[0] == 2) {
+							out[i + num_train * j] = 
+								2 * output_scale * exp(-squared_distance / 2);
+						}
+						else {
+							mexErrMsgTxt("hyperparameter index out of range!");
+							return;
+						}
+
+						/* symmetric output */
+						out[j + num_train * i] = out[i + num_train * j];
+					}
+				return;
+			}
+			else {
+
+				test = mxGetPr(prhs[2]);
+				num_test = mxGetM(prhs[2]);
+			
+				plhs[0] = mxCreateDoubleMatrix(num_train, num_test, mxREAL);
+				out = mxGetPr(plhs[0]);
+
+				for (i = 0; i < num_test; i++) {
+					for (j = 0; j < num_train; j++) {
+						
+						squared_distance = 0;
+						for (k = 0; k < dim; k++) {
+							difference = (test[i + num_test * k] - 
+														train[j + num_train * k]) /
+								input_scale;
+							squared_distance += difference * difference;
+						}
+						
+						/* input scale */
+						if (hyperparameter[0] == 1) {
+							out[j + num_train * i] = output_scale * squared_distance *  exp(-squared_distance / 2);
+						}
+						/* output scale */
+						else if (hyperparameter[0] == 2) {
+							out[j + num_train * i] = 2 * output_scale *  exp(-squared_distance / 2);
+						}
+						else {
+							mexErrMsgTxt("hyperparameter index out of range!");
+							return;
+						}
+					}
 				}
-			return;
+			}
 		}
-		
-		return;
 	}
 }
