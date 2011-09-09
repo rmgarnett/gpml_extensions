@@ -9,7 +9,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 	double *hyperparameters, *train, *test, *out, *hyperparameter;
 
 	int num_train, num_test, dim, i, j, k;
-	double input_scale, output_scale;
+	double inverse_squared_input_scale, half_inverse_squared_input_scale, 
+		output_scale, twice_output_scale;
 	double squared_distance = 0, difference;
 
 	/* number of hyperparameters */
@@ -29,8 +30,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
 	}
 
 	hyperparameters = mxGetPr(prhs[0]);
-	input_scale = exp(hyperparameters[0]);
+	inverse_squared_input_scale = exp(-2 * hyperparameters[0]);
+	half_inverse_squared_input_scale = inverse_squared_input_scale / 2;
 	output_scale = exp(2 * hyperparameters[1]);
+	twice_output_scale = 2 * output_scale;
 
 	/* training covariance */
 	if ((nrhs == 2) || ((nrhs == 3) && (mxGetNumberOfElements(prhs[2]) == 0))) {
@@ -42,13 +45,12 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
 				squared_distance = 0;
 				for (k = 0; k < dim; k++) {
-					difference = (train[i + num_train * k] - 
-												train[j + num_train * k]) / input_scale;
+					difference = (train[i + num_train * k] - train[j + num_train * k]);
 					squared_distance += difference * difference;
 				}
 
 				out[i + num_train * j] = 
-					output_scale * exp(-squared_distance / 2);
+					output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 
 				/* symmetric output */
 				out[j + num_train * i] = out[i + num_train * j];
@@ -99,13 +101,12 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
 					squared_distance = 0;
 					for (k = 0; k < dim; k++) {
-						difference = (test[i + num_test * k] - 
-													train[j + num_train * k]) /
-							input_scale;
+						difference = (test[i + num_test * k] - train[j + num_train * k]);
 						squared_distance += difference * difference;
 					}
 					
-					out[j + num_train * i] = output_scale * exp(-squared_distance / 2);
+					out[j + num_train * i] = 
+						output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 				}
 			}
 		}
@@ -127,15 +128,12 @@ void mexFunction(int nlhs, mxArray *plhs[],
 				
 				/* input scale */
 				if (hyperparameter[0] == 1) { 
-					for (i = 0; i < num_train; i++) {
-						out[i] = 0;
-					}
 					return;
 				}
 				/* output scale */
 				else if (hyperparameter[0] == 2) {
 					for (i = 0; i < num_train; i++) {
-						out[i] = 2 * output_scale;
+						out[i] = twice_output_scale;
 					}
 					return;
 				}
@@ -163,20 +161,20 @@ void mexFunction(int nlhs, mxArray *plhs[],
 						
 						squared_distance = 0;
 						for (k = 0; k < dim; k++) {
-							difference = (train[i + num_train * k] - 
-														train[j + num_train * k]) / input_scale;
+							difference = (train[i + num_train * k] - train[j + num_train * k]);
 							squared_distance += difference * difference;
 						}
 						
 						/* input scale */
 						if (hyperparameter[0] == 1) {
 							out[i + num_train * j] = 
-								output_scale * squared_distance * exp(-squared_distance / 2);
+								output_scale * squared_distance * inverse_squared_input_scale *
+								exp(-squared_distance * half_inverse_squared_input_scale);
 						}
 						/* output scale */
 						else if (hyperparameter[0] == 2) {
 							out[i + num_train * j] = 
-								2 * output_scale * exp(-squared_distance / 2);
+								twice_output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 						}
 						else {
 							mexErrMsgTxt("hyperparameter index out of range!");
@@ -201,19 +199,20 @@ void mexFunction(int nlhs, mxArray *plhs[],
 						
 						squared_distance = 0;
 						for (k = 0; k < dim; k++) {
-							difference = (test[i + num_test * k] - 
-														train[j + num_train * k]) /
-								input_scale;
+							difference = (test[i + num_test * k] - train[j + num_train * k]);
 							squared_distance += difference * difference;
 						}
 						
 						/* input scale */
 						if (hyperparameter[0] == 1) {
-							out[j + num_train * i] = output_scale * squared_distance *  exp(-squared_distance / 2);
+							out[j + num_train * i] = 
+								output_scale * squared_distance * inverse_squared_input_scale *
+								exp(-squared_distance * half_inverse_squared_input_scale);
 						}
 						/* output scale */
 						else if (hyperparameter[0] == 2) {
-							out[j + num_train * i] = 2 * output_scale *  exp(-squared_distance / 2);
+							out[j + num_train * i] = 
+								twice_output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 						}
 						else {
 							mexErrMsgTxt("hyperparameter index out of range!");

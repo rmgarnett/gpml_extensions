@@ -1,4 +1,4 @@
-function passed = test_covariance(covariance, D, num_train, num_test)
+function passed = test_covariance(covariance, num_train, num_test, D)
   
   passed = true;
   tolerance = 1e-12;
@@ -38,10 +38,10 @@ function passed = test_covariance(covariance, D, num_train, num_test)
   Ks = covariance(hyp, x, xs);
   disp(['   Ks = ' name '(hyp, x, xs)']);
   disp('testing for consistency with GPML implementation');
-  Ks_GPML = GPMLcovariance(hyp, x);
+  Ks_GPML = GPMLcovariance(hyp, x, xs);
   disp(['   Ks_GPML = GPML' name '(hyp, x, xs)']);
-  error = norm(K - Ks_GPML);
-  disp(['   norm(K - Ks_GPML) = ' num2str(error)]);
+  error = norm(Ks - Ks_GPML);
+  disp(['   norm(Ks - Ks_GPML) = ' num2str(error)]);
   passed = passfail(error < tolerance) && passed;
 
   disp(['testing interface (5), Kss = ' name '(hyp, xs, ''diag'')']);
@@ -99,20 +99,6 @@ function passed = test_covariance(covariance, D, num_train, num_test)
     disp('Not all tests passed!');
     return;
   end
-  
-  disp('testing timing');
-  tic;
-  for i = 1:100
-    K = covariance(hyp, x);
-  end
-  elapsed = toc;
-  disp(['   average time to calculate compiled covariance (K = ' name '(hyp, x), 100 runs) = ' num2str(elapsed / 100) 's.']);
-
-  for i = 1:100
-    K = GPMLcovariance(hyp, x);
-  end
-  elapsed = toc;
-  disp(['   average time to calculate GPML covariance (K = GPML' name '(hyp, x), 100 runs) = ' num2str(elapsed / 100) 's.']);
 end
 
 function passed = passfail(passed)
