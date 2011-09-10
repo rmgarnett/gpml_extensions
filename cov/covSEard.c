@@ -2,6 +2,7 @@
 
 #include "mex.h"
 #include <math.h>
+#define APPROX_EQUAL(x, y, tol) (abs((x) - (y)) <= (tol))
 
 void mexFunction(int nlhs, mxArray *plhs[],
 								 int nrhs, const mxArray *prhs[])
@@ -13,6 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 	double squared_distance = 0, difference, index_distance = 0;
 
 	const double ONE_HALF = 0.500000000000000;
+	const double tolerance = 1e-6;
 
 	/* number of hyperparameters */
   if ((nlhs <= 1) && (nrhs == 0)) {
@@ -136,12 +138,12 @@ void mexFunction(int nlhs, mxArray *plhs[],
 				out = mxGetPr(plhs[0]);
 				
 				/* input scale */
-				if (hyperparameter[0] <= dim) { 
+				if ((hyperparameter[0] > 0) && (hyperparameter[0] <= dim)) { 
 					free(inverse_input_scales);
 					return;
 				}
 				/* output scale */
-				else if (hyperparameter[0] == (dim + 1)) {
+				else if (APPROX_EQUAL(hyperparameter[0], dim + 1, tolerance)) {
 					for (i = 0; i < num_train; i++) {
 						out[i] = twice_output_scale;
 					}
@@ -189,7 +191,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 								output_scale * index_distance * exp(-squared_distance * ONE_HALF);
 						}
 						/* output scale */
-						else if (hyperparameter[0] == (dim + 1)) {
+						else if (APPROX_EQUAL(hyperparameter[0], dim + 1, tolerance)) {
 							out[i + num_train * j] = 
 								twice_output_scale * exp(-squared_distance * ONE_HALF);
 						}
@@ -222,7 +224,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 								inverse_input_scales[k];
 							squared_distance += difference * difference;
 
-							if (k == (hyperparameter[0] - 1)) {
+							if (APPROX_EQUAL(k, hyperparameter[0] - 1, tolerance)) {
 								index_distance = difference * difference;
 							}
 						}
@@ -233,7 +235,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 								output_scale * index_distance * exp(-squared_distance * ONE_HALF);
 						}
 						/* output scale */
-						else if (hyperparameter[0] == (dim + 1)) {
+						else if (APPROX_EQUAL(hyperparameter[0], dim + 1, tolerance)) {
 							out[j + num_train * i] = 
 								twice_output_scale * exp(-squared_distance * ONE_HALF);
 						}

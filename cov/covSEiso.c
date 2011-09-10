@@ -2,6 +2,7 @@
 
 #include "mex.h"
 #include <math.h>
+#define APPROX_EQUAL(x, y, tol) (abs((x) - (y)) <= (tol))
 
 void mexFunction(int nlhs, mxArray *plhs[],
 								 int nrhs, const mxArray *prhs[])
@@ -12,6 +13,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 	double inverse_squared_input_scale, half_inverse_squared_input_scale, 
 		output_scale, twice_output_scale;
 	double squared_distance = 0, difference;
+
+	const double tolerance = 1e-6;
 
 	/* number of hyperparameters */
   if ((nlhs <= 1) && (nrhs == 0)) {
@@ -109,8 +112,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 						output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 				}
 			}
+			return;
 		}
-
 	}
 
 	/* derivatives with respect to hyperparamters */
@@ -127,11 +130,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
 				out = mxGetPr(plhs[0]);
 				
 				/* input scale */
-				if (hyperparameter[0] == 1) { 
+				if (APPROX_EQUAL(hyperparameter[0], 1, tolerance)) { 
 					return;
 				}
 				/* output scale */
-				else if (hyperparameter[0] == 2) {
+				else if (APPROX_EQUAL(hyperparameter[0], 2, tolerance)) {
 					for (i = 0; i < num_train; i++) {
 						out[i] = twice_output_scale;
 					}
@@ -153,6 +156,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 			
 			/* training derivatives */
 			if (mxGetNumberOfElements(prhs[2]) == 0) {
+
 				plhs[0] = mxCreateDoubleMatrix(num_train, num_train, mxREAL);
 				out = mxGetPr(plhs[0]);
 			
@@ -166,13 +170,13 @@ void mexFunction(int nlhs, mxArray *plhs[],
 						}
 						
 						/* input scale */
-						if (hyperparameter[0] == 1) {
+						if (APPROX_EQUAL(hyperparameter[0], 1, tolerance)) {
 							out[i + num_train * j] = 
 								output_scale * squared_distance * inverse_squared_input_scale *
 								exp(-squared_distance * half_inverse_squared_input_scale);
 						}
 						/* output scale */
-						else if (hyperparameter[0] == 2) {
+						else if (APPROX_EQUAL(hyperparameter[0], 2, tolerance)) {
 							out[i + num_train * j] = 
 								twice_output_scale * exp(-squared_distance * half_inverse_squared_input_scale);
 						}
