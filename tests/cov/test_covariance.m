@@ -1,4 +1,4 @@
-function passed = test_covariance(covariance, num_train, num_test, D)
+function passed = test_covariance(covariance, num_train, num_test, D, varargin)
   
   passed = true;
   tolerance = 1e-12;
@@ -16,17 +16,17 @@ function passed = test_covariance(covariance, num_train, num_test, D)
   x = rand(num_train, D);
   
   disp(['testing interface (2), K = ' name '(hyp, x)']);
-  K = covariance(hyp, x);
+  K = covariance(varargin{:}, hyp, x);
   disp(['   K = ' name '(hyp, x)']);
   disp('testing for consistency with GPML implementation');
-  K_GPML = GPMLcovariance(hyp, x);
+  K_GPML = GPMLcovariance(varargin{:}, hyp, x);
   disp(['   K_GPML = GPML' name '(hyp, x)']);
   error = norm(K - K_GPML);
   disp(['   norm(K - K_GPML) = ' num2str(error)]);
   passed = passfail(error < tolerance) && passed;
 
   disp(['testing interface (3), K2 = ' name '(hyp, x, []), should equal K']);
-  K2 = covariance(hyp, x, []);
+  K2 = covariance(varargin{:}, hyp, x, []);
   disp(['   K2 = ' name '(hyp, x, [])']);
   error = max(abs(K2(:) - K(:)));
   disp(['   max(abs(K2(:) - K(:))) = ' num2str(error)]);
@@ -35,20 +35,20 @@ function passed = test_covariance(covariance, num_train, num_test, D)
   xs = rand(num_test, D);
 
   disp(['testing interface (4), Ks = ' name '(hyp, x, xs)']);
-  Ks = covariance(hyp, x, xs);
+  Ks = covariance(varargin{:}, hyp, x, xs);
   disp(['   Ks = ' name '(hyp, x, xs)']);
   disp('testing for consistency with GPML implementation');
-  Ks_GPML = GPMLcovariance(hyp, x, xs);
+  Ks_GPML = GPMLcovariance(varargin{:}, hyp, x, xs);
   disp(['   Ks_GPML = GPML' name '(hyp, x, xs)']);
   error = norm(Ks - Ks_GPML);
   disp(['   norm(Ks - Ks_GPML) = ' num2str(error)]);
   passed = passfail(error < tolerance) && passed;
 
   disp(['testing interface (5), Kss = ' name '(hyp, xs, ''diag'')']);
-  Kss = covariance(hyp, xs, 'diag');
+  Kss = covariance(varargin{:}, hyp, xs, 'diag');
   disp(['   Kss = ' name '(hyp, xs, ''diag'')']);
   disp('testing for consistency with GPML implementation');
-  Kss_GPML = GPMLcovariance(hyp, xs, 'diag');
+  Kss_GPML = GPMLcovariance(varargin{:}, hyp, xs, 'diag');
   disp(['   Kss_GPML = GPML' name '(hyp, xs, ''diag'')']);
   error = norm(Kss - Kss_GPML);
   disp(['   norm(Kss - Kss_GPML) = ' num2str(error)]);
@@ -57,10 +57,10 @@ function passed = test_covariance(covariance, num_train, num_test, D)
   disp(['testing interface (6), dKi = ' name '(hyp, x, [], i)']);
   for i = 1:num_hyp
     disp(['   testing derivative #' num2str(i)]);
-    dKi = covariance(hyp, x, [], i);
+    dKi = covariance(varargin{:}, hyp, x, [], i);
     disp(['      dKi = ' name '(hyp, x, [], ' num2str(i) ')']);
     disp('   testing for consistency with GPML implementation');
-    dKi_GPML = GPMLcovariance(hyp, x, [], i);
+    dKi_GPML = GPMLcovariance(varargin{:}, hyp, x, [], i);
     disp(['      dKi_GPML = GPML' name '(hyp, x, [], ' num2str(i) ')']);
     error = norm(dKi - dKi_GPML);
     disp(['      norm(dKi - dKi_GPML) = ' num2str(error)]);
@@ -70,10 +70,10 @@ function passed = test_covariance(covariance, num_train, num_test, D)
   disp(['testing interface (7), dKsi = ' name '(hyp, x, xs, i)']);
   for i = 1:num_hyp
     disp(['   testing derivative #' num2str(i)]);
-    dKsi = covariance(hyp, x, xs, i);
+    dKsi = covariance(varargin{:}, hyp, x, xs, i);
     disp(['      dKsi = ' name '(hyp, x, xs, ' num2str(i) ')']);
     disp('   testing for consistency with GPML implementation');
-    dKsi_GPML = GPMLcovariance(hyp, x, xs, i);
+    dKsi_GPML = GPMLcovariance(varargin{:}, hyp, x, xs, i);
     disp(['      dKsi_GPML = GPML' name '(hyp, x, xs, ' num2str(i) ')']);
     error = norm(dKsi - dKsi_GPML);
     disp(['      norm(dKsi - dKsi_GPML) = ' num2str(error)]);
@@ -83,10 +83,10 @@ function passed = test_covariance(covariance, num_train, num_test, D)
   disp(['testing interface (8), dKssi = ' name '(hyp, x, ''diag'', i)']);
   for i = 1:num_hyp
     disp(['   testing derivative #' num2str(i)]);
-    dKssi = covariance(hyp, x, 'diag', i);
+    dKssi = covariance(varargin{:}, hyp, x, 'diag', i);
     disp(['      dKssi = ' name '(hyp, x, ''diag'', ' num2str(i) ')']);
     disp('   testing for consistency with GPML implementation');
-    dKssi_GPML = GPMLcovariance(hyp, x, 'diag', i);
+    dKssi_GPML = GPMLcovariance(varargin{:}, hyp, x, 'diag', i);
     disp(['      dKssi_GPML = GPML' name '(hyp, x, ''diag'', ' num2str(i) ')']);
     error = norm(dKssi - dKssi_GPML);
     disp(['      norm(dKssi - dKssi_GPML) = ' num2str(error)]);
