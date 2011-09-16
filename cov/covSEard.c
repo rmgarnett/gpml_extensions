@@ -120,8 +120,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 						output_scale * exp(-squared_distance * ONE_HALF);
 				}
 			}
+			return;
 		}
-
 	}
 
 	/* derivatives with respect to hyperparamters */
@@ -247,6 +247,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 					}
 				}
 			}
+			return;
 		}
 	}
 }
