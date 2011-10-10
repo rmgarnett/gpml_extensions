@@ -92,7 +92,7 @@ end
 Ltril = all(all(tril(L, -1) == 0));
 
 % number of data points
-ns = size(xs,1);
+ns = size(xs, 1);
 
 % number of data points per mini batch
 nperbatch = 5000;
