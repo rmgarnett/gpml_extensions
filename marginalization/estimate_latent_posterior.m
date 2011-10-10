@@ -14,33 +14,34 @@ function [latent_means latent_covariances hypersample_weights] = ...
   if (full_covariance)
     latent_covariances = zeros(num_test, num_test, num_hypersamples);
   else
-    latent_covariances = zeros(num_test, 1, num_hypersamples);
+    latent_covariances = zeros(num_test, num_hypersamples);
   end
 
   log_likelihoods = zeros(num_hypersamples, 1);
 
   for i = 1:num_hypersamples
-    
-    hyp.lik = hypersamples.values(i, hypersamples.likelihood_ind);
-    hyp.mean = hypersamples.values(i, hypersamples.mean_ind);
-    hyp.cov = hypersamples.values(i, hypersamples.covariance_ind);
-
-    if (full_covariance)
-      [~, ~, latent_means(:, i), latent_covariances(:, :, i), ~, ...
-       log_likelihoods(i)] = gp_test_full_covariance(hyp, inference_method, ...
-              mean_function, covariance_function, likelihood, data, ...
-              responses, test);
-    else
-      [~, ~, latent_means(:, i), latent_covariances(:, :, i), ~, ...
-       log_likelihoods(i)] = gp_test(hyp, inference_method, ...
-              mean_function, covariance_function, likelihood, data, ...
-              responses, test);
+    try
+      hyp.lik = hypersamples.values(i, hypersamples.likelihood_ind);
+      hyp.mean = hypersamples.values(i, hypersamples.mean_ind);
+      hyp.cov = hypersamples.values(i, hypersamples.covariance_ind);
+      
+      if (full_covariance)
+        [~, ~, latent_means(:, i), latent_covariances(:, :, i), ~, ...
+         log_likelihoods(i)] = gp_test_full_covariance(hyp, inference_method, ...
+                mean_function, covariance_function, likelihood, data, ...
+                responses, test);
+      else
+        [~, ~, latent_means(:, i), latent_covariances(:, i), ~, ...
+         log_likelihoods(i)] = gp_test(hyp, inference_method, ...
+                mean_function, covariance_function, likelihood, data, ...
+                responses, test);
+      end
+    catch
+      log_likelihoods(i) = -Inf;
     end
   end
   
   hypersamples.log_likelihoods = -log_likelihoods;
   hypersample_weights = calculate_hypersample_weights(hypersamples);
-
-  latent_covariances = squeeze(latent_covariances);
 
 end
