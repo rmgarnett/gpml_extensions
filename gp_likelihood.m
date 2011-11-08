@@ -45,7 +45,7 @@ try
     varargout = {nlZ, dnlZ, post};
     return;
   end
-catch msgstr
+ catch msgstr
   warning('GP_LIKELIHOOD:INFERENCE_FAIL', ...
           ['Inference method failed [' msgstr.message ']' ...
            ', attempting to continue']);
