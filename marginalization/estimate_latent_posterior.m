@@ -6,41 +6,44 @@ function [latent_means latent_covariances hypersample_weights] = ...
   if (nargin < 9)
     full_covariance = false;
   end
+  hyperparameters.full_covariance = full_covariance;
 
   num_hypersamples = size(hypersamples.values, 1);
   num_test = size(test, 1);
 
-  latent_means = zeros(num_test, num_hypersamples);
+  latent_means = zeros(num_hypersamples, num_test);
   if (full_covariance)
-    latent_covariances = zeros(num_test, num_test, num_hypersamples);
+    latent_covariances = zeros(num_hypersamples, num_test, num_test);
   else
-    latent_covariances = zeros(num_test, num_hypersamples);
+    latent_covariances = zeros(num_hypersamples, num_test);
   end
 
   log_likelihoods = zeros(num_hypersamples, 1);
 
   for i = 1:num_hypersamples
     try
-      hyp.lik = hypersamples.values(i, hypersamples.likelihood_ind);
-      hyp.mean = hypersamples.values(i, hypersamples.mean_ind);
-      hyp.cov = hypersamples.values(i, hypersamples.covariance_ind);
+      hyperparameters.lik  = hypersamples.values(i, hypersamples.likelihood_ind);
+      hyperparameters.mean = hypersamples.values(i, hypersamples.mean_ind);
+      hyperparameters.cov  = hypersamples.values(i, hypersamples.covariance_ind);
       
       if (full_covariance)
-        [~, ~, latent_means(:, i), latent_covariances(:, :, i), ~, ...
-         log_likelihoods(i)] = gp_test_full_covariance(hyp, inference_method, ...
+        [~, ~, latent_means(i, :), latent_covariances(i, :, :), ~, ...
+         log_likelihoods(i)] = gp_test(hyperparameters, inference_method, ...
                 mean_function, covariance_function, likelihood, data, ...
                 responses, test);
       else
-        [~, ~, latent_means(:, i), latent_covariances(:, i), ~, ...
-         log_likelihoods(i)] = gp_test(hyp, inference_method, ...
+        [~, ~, latent_means(i, :), latent_covariances(i, :), ~, ...
+         log_likelihoods(i)] = gp_test(hyperparameters, inference_method, ...
                 mean_function, covariance_function, likelihood, data, ...
                 responses, test);
       end
-    catch
+    catch message
+      disp('error in estimate_latent_posterior:');
+      getReport(message);
       log_likelihoods(i) = -Inf;
     end
   end
-  
+
   hypersamples.log_likelihoods = -log_likelihoods;
   hypersample_weights = calculate_hypersample_weights(hypersamples);
 
