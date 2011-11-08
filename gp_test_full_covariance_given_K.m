@@ -1,6 +1,5 @@
-function [varargout] = ...
-      gp_test_full_covariance_given_K(K, train_ind, test_ind, ...
-            hyp, inf, mean, cov, lik, x, y, xs, ys)
+function [varargout] = gp_test_full_covariance_given_K(K, train_ind, ...
+          test_ind, hyp, inf, mean, cov, lik, x, y, xs, ys)
 % Calculate test set predictive probabilities given a specified
 % Gaussian process prior, trianing data, and test points.  If desired,
 % the negative log marginal likelihood of a Gaussian process and its
@@ -52,9 +51,9 @@ nlZ = [];
 dnlZ = [];
 try
   if (nargout < 6)        % no likelihood desired
-    post = inf(hyp, mean, cov, lik, x, y);
+     post           = inf(hyp, mean, cov, lik, x, y);
   elseif (nargout < 7)    % likelihood desired
-    [post nlZ] = inf(hyp, mean, cov, lik, x, y);
+    [post nlZ]      = inf(hyp, mean, cov, lik, x, y);
   else                    % likelihood and derivatives desired
     [post nlZ dnlZ] = inf(hyp, mean, cov, lik, x, y);
   end
@@ -63,9 +62,9 @@ catch msgstr
   rethrow(msgstr);
 end
 
+    L = post.L; 
+   sW = post.sW;
 alpha = post.alpha;
-L = post.L; 
-sW = post.sW;
 
 % handle things for sparse representations
 if (issparse(alpha))
