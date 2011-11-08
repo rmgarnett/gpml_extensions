@@ -7,7 +7,7 @@ function hypersample_weights = calculate_hypersample_weights(hypersamples)
       hp_heuristics(hypersamples.values(:, hypersamples.marginal_ind), ...
                     hypersamples.log_likelihoods, 100);
 
-  quad_gp.quad_noise_sd = quad_noise_sd;
+  quad_gp.quad_noise_sd     = quad_noise_sd;
   quad_gp.quad_input_scales = quad_input_scales;
   quad_gp.quad_output_scale = quad_output_scale;
   
@@ -30,6 +30,6 @@ function hypersample_weights = calculate_hypersample_weights(hypersamples)
     gp.hypersamples(i).logL = hypersamples.log_likelihoods(i);
   end
   
-  hypersample_weights = weights(gp, weights_mat);
+  hypersample_weights = weights(gp, weights_mat)';
 
 end
