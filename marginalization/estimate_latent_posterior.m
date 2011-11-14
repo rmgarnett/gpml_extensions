@@ -39,7 +39,7 @@ function [latent_means latent_covariances hypersample_weights] = ...
       end
     catch message
       disp('error in estimate_latent_posterior:');
-      getReport(message);
+      disp(getReport(message));
       log_likelihoods(i) = -Inf;
     end
   end
