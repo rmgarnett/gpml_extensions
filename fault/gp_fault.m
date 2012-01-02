@@ -1,159 +1,195 @@
-function [varargout] = gp_fault(hyp, inf, mean, cov, lik, a, b, x, y, xs, ys)
-% Gaussian Process inference and prediction. The gp function provides a
-% flexible framework for Bayesian inference and prediction with Gaussian
-% processes for scalar targets, i.e. both regression and binary
-% classification. The prior is Gaussian process, defined through specification
-% of its mean and covariance function. The likelihood function is also
-% specified. Both the prior and the likelihood may have hyperparameters
-% associated with them.
+% function varargout = gp_fault(hyperparameters, covariance_function, ...
+%                               mean_function, likelihood, a_function, ...
+%                               b_function, train_x, train_y, test_x, ...
+%                               test_y)
 %
-% Two modes are possible: training or prediction: if no test cases are
-% supplied, then the negative log marginal likelihood and its partial
-% derivatives w.r.t. the hyperparameters is computed; this mode is used to fit
-% the hyperparameters. If test cases are given, then the test set predictive
-% probabilities are returned. Usage:
+% inputs:
 %
-%   training: [nlZ dnlZ          ] = gp(hyp, inf, mean, cov, lik, x, y);
-% prediction: [ymu ys2 fmu fs2   ] = gp(hyp, inf, mean, cov, lik, x, y, xs);
-%         or: [ymu ys2 fmu fs2 lp] = gp(hyp, inf, mean, cov, lik, x, y, xs, ys);
+%      inference_method: function specifying the inference method
+%   covariance_function: prior covariance function (see below)
+%         mean_function: prior mean function
+%            likelihood: likelihood function
+%            a_function: the a(x) function in a(x)y + b(x). this
+%                        should be a valid GPML mean function.
+%            b_function: the a(x) function in a(x)y + b(x). this
+%                        should be a valid GPML mean function.
+%               train_x: training x points
+%               train_y: training y points
+%                test_x: test x points
+%                test_y: test y points
 %
-% where:
+% outputs:
 %
-%   hyp      column vector of hyperparameters
-%   inf      function specifying the inference method 
-%   cov      prior covariance function (see below)
-%   mean     prior mean function
-%   lik      likelihood function
-%   x        n by D matrix of training inputs
-%   y        column vector of length n of training targets
-%   xs       ns by D matrix of test inputs
-%   ys       column vector of length nn of test targets
+%              negative_log_marginal_likelihood: negative log
+%                                                marginal likelihood
+%  negative_log_marginal_likelihood_derivatives: derivatives of negative
+%                                                log marginal likelihood
+%                                                with respect to
+%                                                hyperparameters
+%                                   output_mean: predictive output mean
+%                               output_variance: predictive output variance
+%                                   latent_mean: predictive latent mean
+%                               latent_variance: predictive latent variance
+%                                    fault_mean: predictive fault mean
+%                                fault_variance: predictive fault variance
+%                             log_probabilities: log predictive probabilities
+%                                     posterior: struct containing
+%                                                the approximate posteior
 %
-%   nlZ      returned value of the negative log marginal likelihood
-%   dnlZ     column vector of partial derivatives of the negative
-%               log marginal likelihood w.r.t. each hyperparameter
-%   ymu      column vector (of length ns) of predictive output means
-%   ys2      column vector (of length ns) of predictive output variances
-%   fmu      column vector (of length ns) of predictive latent means
-%   fs2      column vector (of length ns) of predictive latent variances
-%   lp       column vector (of length ns) of log predictive probabilities
-%
-%   post     struct representation of the (approximate) posterior
-%            3rd output in training mode and 6th output in prediction mode
-% 
 % See also covFunctions.m, infMethods.m, likFunctions.m, meanFunctions.m.
 %
-% Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2011-02-18
-if nargin<8 || nargin>10
-  disp('Usage: [nlZ dnlZ          ] = gp(hyp, inf, mean, cov, lik, x, y);')
-  disp('   or: [ymu ys2 fmu fs2   ] = gp(hyp, inf, mean, cov, lik, x, y, xs);')
-  disp('   or: [ymu ys2 fmu fs2 lp] = gp(hyp, inf, mean, cov, lik, x, y, xs, ys);')
-  return
-end
+% Copyright (c) 2011 Roman Garnett.  All rights reserved.
 
-% classification likelihoods not allowed
-if strcmp(func2str(lik),'likErf') || strcmp(func2str(lik), 'likLogistic')
-  error('Classification not supported!');
-end
-if isempty(inf),  inf = @infExact; else                        % set default inf
-  if iscell(inf), inf = inf{1}; end                      % cell input is allowed
-  if ischar(inf), inf = str2func(inf); end        % convert into function handle
-end
-if isempty(mean), mean = {@meanZero}; end                     % set default mean
-if ischar(mean) || isa(mean, 'function_handle'), mean = {mean}; end  % make cell
-if isempty(cov), error('Covariance function cannot be empty'); end  % no default
-if ischar(cov)  || isa(cov,  'function_handle'), cov  = {cov};  end  % make cell
-cov1 = cov{1}; if isa(cov1, 'function_handle'), cov1 = func2str(cov1); end
-if strcmp(cov1,'covFITC'); inf = @infFITC; end       % only one possible inf alg
-if isempty(lik),  lik = @likGauss; else                        % set default lik
-  if iscell(lik), lik = lik{1}; end                      % cell input is allowed
-  if ischar(lik), lik = str2func(lik); end        % convert into function handle
-end
-if isempty(a), a = {@meanOnes}; end                              % set default a
-if ischar(a) || isa(a, 'function_handle'), a = {a}; end              % make cell
-if isempty(b), b = {@meanZero}; end                              % set default b
-if ischar(b) || isa(b, 'function_handle'), b = {b}; end              % make cell
+function varargout = gp_fault(hyperparameters, covariance_function, ...
+                              mean_function, likelihood, a_function, ...
+                              b_function, train_x, train_y, test_x, ...
+                              test_y)
 
-D = size(x,2);
-if ~isfield(hyp,'mean'), hyp.mean = []; end        % check the hyp specification
-if eval(feval(mean{:})) ~= numel(hyp.mean)
-  error('Number of mean function hyperparameters disagree with mean function')
-end
-if ~isfield(hyp,'cov'), hyp.cov = []; end
-if eval(feval(cov{:})) ~= numel(hyp.cov)
-  error('Number of cov function hyperparameters disagree with cov function')
-end
-if ~isfield(hyp,'lik'), hyp.lik = []; end
-if eval(feval(lik)) ~= numel(hyp.lik)
-  error('Number of lik function hyperparameters disagree with lik function')
-end
-if ~isfield(hyp,'b'), hyp.b = []; end        % check the hyp specification
-if eval(feval(b{:})) ~= numel(hyp.b)
-  error('Number of b function hyperparameters disagree with mean function')
-end
+% diagonal A transformation matix
+A = diag(feval(a_function{:}, hyp.a, x));
 
-A = diag(feval(a{:}, hyp.a, x));
-
-try                                                  % call the inference method
-  if nargin>9   % compute marginal likelihood and its derivatives only if needed
-    post = inf(hyp, mean, cov, lik, a, b, x, y);
+try
+  % call the inference method and compute marginal likelihood and its
+  % derivatives only if needed
+  if (nargin > 9)
+    posterior = ...
+        inference_method(hyperparameters, mean_function, ...
+                         covariance_method, likelihood, a_function, ...
+                         b_function, x, y);
   else
-    if nargout==1
-      [post nlZ] = inf(hyp, mean, cov, lik, a, b, x, y); dnlZ = {};
+    if (nargout == 1)
+      [posterior, negative_log_marginal_likelihood] = ...
+          inference_method(hyperparameters, mean_function, ...
+                           covariance_method, likelihood, a_function, ...
+                            b_function, x, y);
+       marginal_likelihood_derivatives = {};
     else
-      [post nlZ dnlZ] = inf(hyp, mean, cov, lik, a, b, x, y);
+      [posterior, negative_log_marginal_likelihood, ...
+       negative_log_marginal_likelihood_derivatives] = ...
+          inference_method(hyperparameters, mean_function, ...
+                           covariance_method, likelihood, a_function, ...
+                           b_function, x, y);
     end
   end
 catch
   msgstr = lasterr;
-  if nargin > 9, error('Inference method failed [%s]', msgstr); else 
-    warning('Inference method failed [%s] .. attempting to continue',msgstr)
-    dnlZ = struct('cov',0*hyp.cov, 'mean',0*hyp.mean, 'lik',0*hyp.lik);
-    varargout = {NaN, dnlZ}; return                    % continue with a warning
+  if (nargin > 9)
+    error('gpml_extensions:inference method failed [%s]', msgstr);
+  else
+    % continue with a warning
+    warning(['gpml_extensions:inference method failed [%s] ... ' ...
+             'attempting to continue'], msgstr);
+    negative_log_marginal_likelihood_derivatives = ...
+        struct('cov',  0 * hyperparameters.cov, ...
+               'mean', 0 * hyperparameters.mean, ...
+               'lik',  0 * hyperparameters.lik);
+    varargout = {NaN, marginal_likelihood_derivatives};
+    return;
   end
 end
 
-if nargin==9                                    % if no test cases are provided
-  varargout = {nlZ, dnlZ, post};    % report -log marg lik, derivatives and post
+if (nargin == 9)
+  % no test cases are provided report negative log marginal
+  % likelihood, its derivatives, and the posterior struct
+  varargout = {negative_log_marginal_likelihood, ...
+               negative_logmarginal_likelihood_derivatives, posterior};
 else
-  alpha = post.alpha; L = post.L; sW = post.sW;
-  if issparse(alpha)                  % handle things for sparse representations
-    nz = alpha ~= 0;                                 % determine nonzero indices
-    if issparse(L), L = full(L(nz,nz)); end      % convert L and sW if necessary
-    if issparse(sW), sW = full(sW(nz)); end
-  else nz = true(size(alpha)); end                   % non-sparse representation
-  if numel(L)==0                      % in case L is not provided, we compute it
-    K = feval(cov{:}, hyp.cov, x(nz,:));
-    L = chol(eye(sum(nz))+sW*sW'.*K);
-  end
-  Ltril = all(all(tril(L,-1)==0));            % is L an upper triangular matrix?
-  ns = size(xs,1);                                       % number of data points
-  nperbatch = 1000;                       % number of data points per mini batch
-  nact = 0;                       % number of already processed test data points
-  ymu = zeros(ns,1); ys2 = ymu; fmu = ymu; fs2 = ymu; lp = ymu;   % allocate mem
-  while nact<ns               % process minibatches of test cases to save memory
-    id = (nact+1):min(nact+nperbatch,ns);               % data points to process
-    kss = feval(cov{:}, hyp.cov, xs(id,:), 'diag');              % self-variance
-    Ks  = feval(cov{:}, hyp.cov, x(nz,:), xs(id,:));         % cross-covariances
-    ms = feval(mean{:}, hyp.mean, xs(id,:));
-    fmu(id) = ms + Ks'*full(alpha(nz));                       % predictive means
-    if Ltril           % L is triangular => use Cholesky parameters (alpha,sW,L)
-      V = L' \ (repmat(sW, 1, length(id)) .* (A * Ks));
-      fs2(id) = kss - sum(V.*V,1)';                       % predictive variances
-    else                % L is not triangular => use alternative parametrisation
-      fs2(id) = kss + sum(Ks.*(L*Ks),1)';                 % predictive variances
+  alpha = posterior.alpha;
+  L = posterior.L;
+  sW = posterior.sW;
+
+  % handle things for sparse representations
+  if (issparse(alpha))
+    % determine nonzero indices
+    nz = (alpha ~= 0);
+    % convert L and sW if necessary
+    if (issparse(L))
+      L = full(L(nz, nz));
     end
-    fs2(id) = max(fs2(id),0);   % remove numerical noise i.e. negative variances
-    if nargin<11
-      [lp(id) ymu(id) ys2(id)] = lik(hyp.lik, [], fmu(id), fs2(id));
-    else
-      [lp(id) ymu(id) ys2(id)] = lik(hyp.lik, ys(id), fmu(id), fs2(id));
+    if (issparse(sW))
+      sW = full(sW(nz));
     end
-    nact = id(end);          % set counter to index of last processed data point
-  end
-  if nargin<10
-    varargout = {ymu, ys2, fmu, fs2, [], post};        % assign output arguments
   else
-    varargout = {ymu, ys2, fmu, fs2, lp, post};
+    % non-sparse representation
+    nz = true(size(alpha));
+  end
+
+  % in case L is not provided, we compute it
+  if (numel(L) == 0)
+    K = feval(covariance_function{:}, hyperparameters.cov, train_x(nz, :));
+    L = chol(eye(sum(nz)) + sW * sW' .* K);
+  end
+
+  % is L an upper triangular matrix?
+  L_tril = all(all(tril(L, -1) == 0));
+
+  % number of data points
+  num_points = size(test_x, 1);
+  % number of data points per mini batch
+  num_per_batch = 5000;
+  % number of already processed test data points
+  num_processed = 0;
+
+  % allowcate memory
+  output_mean       = zeros(num_points, 1);
+  output_variance   = zeros(num_points, 1);
+  latent_mean       = zeros(num_points, 1);
+  latent_variance   = zeros(num_points, 1);
+  fault_mean        = zeros(num_points, 1);
+  fault_variance    = zeros(num_points, 1);
+  log_probabilities = zeros(num_points, 1);
+
+  % process minibatches of test cases to save memory
+  while (num_processed < num_points)
+    % data points to process
+    ind = (n_processed + 1):(min(num_points + num_per_batch, num_points);
+
+    % self variances
+    kss = feval(covariance_function{:}, hyperparameters.cov, test_x(nz, :) ...
+                test_x(ind, :), 'diag');
+    % cross covariances
+    Ks = feval(covariance_function{:}, hyperparameters.cov, train_x(nz, :) ...
+               test_x(ind,:));
+
+    % prior mean
+    prior_mean = feval(mean_function{:}, hyperparameters.mean, ...
+                       test_x(ind, :));
+
+    % posterior latent mean
+    latent_mean(ind) = prior_mean + Ks' * full(alpha(nz));
+
+    if (Ltril)
+      % L is triangular => use Cholesky parameters (alpha, sW, L)
+      V = L' \ (repmat(sW, 1, length(ind)) .* (A * Ks));
+      latent_variance(ind) = kss - sum(V .* V, 1)';
+    else
+      % L is not triangular => use alternative parametrisation
+      latent_variance(ind) = kss + sum(Ks .* (L * Ks), 1)';
+    end
+
+    if (nargin < 11)
+      [log_probabilites(ind), output_means(ind), output_variance(ind)] = ...
+          likelihood(hyperparameters.lik, [], latent_mean(ind), ...
+                     latent_variance(ind));
+    else
+      [log_probabilites(ind), output_means(ind), output_variance(ind)] = ...
+          likelihood(hyperparameters.lik, test_y, latent_mean(ind), ...
+                     latent_variance(ind));
+    end
+    % set counter to index of last processed data point
+    num_processed = ind(end);
+  end
+
+  % remove numerical noise i.e. negative variances
+  latent_variance = max(latent_variance, 0);
+
+  % assign output arguments
+  if (nargin < 10)
+    varargout = {output_mean, output_variance, latent_mean, ...
+                 latent_variance, fault_mean, fault_variance, [], posterior};
+  else
+    varargout = {output_mean, output_variance, latent_mean, ...
+                 latent_variance, fault_mean, fault_variance, ...
+                 log_probabilities, posterior};
   end
 end
