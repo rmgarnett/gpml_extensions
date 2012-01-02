@@ -43,7 +43,8 @@ function [hyperparameters, inference_method, mean_function, ...
           b_function, train_x)
 
 % classification likelihoods not allowed
-if strcmp(func2str(lik), 'likErf') || strcmp(func2str(lik), 'likLogistic')
+if (strcmp(func2str(likelihood), 'likErf') || ...
+    strcmp(func2str(likelihood), 'likLogistic'))
   error('gp_extensions:fault_classification_unsupported', ...
         'classification not supported!');
 end
@@ -130,6 +131,7 @@ if (eval(feval(mean_function{:})) ~= numel(hyperparameters.mean))
     error('gpml_extensions:mean_function_hyperparameters_size', ...
         'Number of mean function hyperparameters disagrees with mean function');
 end
+
 if (~isfield(hyperparameters, 'cov'))
   hyperparameters.cov = [];
 end
@@ -137,27 +139,27 @@ if (eval(feval(covariance_function{:})) ~= numel(hyperparameters.cov))
   error('gpml_extensions:covariance_hyperparameters_size', ...
         'Number of covariance function hyperparameters disagrees with covariance function');
 end
+
 if (~isfield(hyperparameters, 'lik'))
   hyperparameters.lik = [];
 end
-if (eval(feval(lik)) ~= numel(hyperparameters.lik))
+if (eval(feval(likelihood)) ~= numel(hyperparameters.lik))
   error('gpml_extensions:likelihood_hyperparameters_size', ...
         'Number of likelihood function hyperparameters disagree with likelihood function');
 end
-if (~isfield(hyperparameters, 'lik'))
-  hyperparameters.lik = [];
-end
-if (eval(feval(a_function)) ~= numel(hyperparameters.a))
-  error('gpml_extensions:a_function_hyperparameters_size', ...
-        'Number of a function hyperparameters disagree with a function');
-end
+
 if (~isfield(hyperparameters, 'a'))
   hyperparameters.a = [];
 end
-if (eval(feval(a_function)) ~= numel(hyperparameters.b))
-  error('gpml_extensions:b_function_hyperparameters_size', ...
-        'Number of b function hyperparameters disagree with b function');
+if (eval(feval(a_function{:})) ~= numel(hyperparameters.a))
+  error('gpml_extensions:a_function_hyperparameters_size', ...
+        'Number of a function hyperparameters disagree with a function');
 end
+
 if (~isfield(hyperparameters, 'b'))
   hyperparameters.b = [];
+end
+if (eval(feval(b_function{:})) ~= numel(hyperparameters.b))
+  error('gpml_extensions:b_function_hyperparameters_size', ...
+        'Number of b function hyperparameters disagree with b function');
 end

@@ -1,7 +1,7 @@
-% function varargout = gp_fault(hyperparameters, covariance_function, ...
-%                               mean_function, likelihood, a_function, ...
-%                               b_function, train_x, train_y, test_x, ...
-%                               test_y)
+% function varargout = gp_fault(hyperparameters, inference_method, ...
+%                              covariance_function, mean_function, ...
+%                              likelihood, a_function, b_function, ...
+%                              train_x, train_y, test_x, test_y)
 %
 % inputs:
 %
@@ -40,35 +40,37 @@
 %
 % Copyright (c) 2011 Roman Garnett.  All rights reserved.
 
-function varargout = gp_fault(hyperparameters, covariance_function, ...
-                              mean_function, likelihood, a_function, ...
-                              b_function, train_x, train_y, test_x, ...
-                              test_y)
+function varargout = gp_fault(hyperparameters, inference_method, ...
+                              mean_function, covariance_function, ...
+                              likelihood, a_function, b_function, ...
+                              train_x, train_y, test_x, test_y)
 
 % diagonal A transformation matix
-A = diag(feval(a_function{:}, hyp.a, x));
+A = diag(feval(a_function{:}, hyperparameters.a, train_x));
 
+negative_log_marginal_likelihood = [];
+negative_log_marginal_likelihood_derivatives = [];
 try
   % call the inference method and compute marginal likelihood and its
   % derivatives only if needed
-  if (nargin > 9)
+  if (nargout < 6)
     posterior = ...
         inference_method(hyperparameters, mean_function, ...
-                         covariance_method, likelihood, a_function, ...
-                         b_function, x, y);
+                         covariance_function, likelihood, a_function, ...
+                         b_function, train_x, train_y);
   else
-    if (nargout == 1)
+    if (nargout < 7)
       [posterior, negative_log_marginal_likelihood] = ...
           inference_method(hyperparameters, mean_function, ...
-                           covariance_method, likelihood, a_function, ...
-                            b_function, x, y);
+                           covariance_function, likelihood, a_function, ...
+                            b_function, train_x, train_y);
        marginal_likelihood_derivatives = {};
     else
       [posterior, negative_log_marginal_likelihood, ...
        negative_log_marginal_likelihood_derivatives] = ...
           inference_method(hyperparameters, mean_function, ...
-                           covariance_method, likelihood, a_function, ...
-                           b_function, x, y);
+                           covariance_function, likelihood, a_function, ...
+                           b_function, train_x, train_y);
     end
   end
 catch
@@ -142,13 +144,13 @@ else
   % process minibatches of test cases to save memory
   while (num_processed < num_points)
     % data points to process
-    ind = (n_processed + 1):(min(num_points + num_per_batch, num_points);
+    ind = (num_processed + 1):(min(num_points + num_per_batch, num_points));
 
     % self variances
-    kss = feval(covariance_function{:}, hyperparameters.cov, test_x(nz, :) ...
-                test_x(ind, :), 'diag');
+    kss = feval(covariance_function{:}, hyperparameters.cov, test_x(nz, :), ...
+                'diag');
     % cross covariances
-    Ks = feval(covariance_function{:}, hyperparameters.cov, train_x(nz, :) ...
+    Ks = feval(covariance_function{:}, hyperparameters.cov, train_x(nz, :), ...
                test_x(ind,:));
 
     % prior mean
@@ -158,7 +160,7 @@ else
     % posterior latent mean
     latent_mean(ind) = prior_mean + Ks' * full(alpha(nz));
 
-    if (Ltril)
+    if (L_tril)
       % L is triangular => use Cholesky parameters (alpha, sW, L)
       V = L' \ (repmat(sW, 1, length(ind)) .* (A * Ks));
       latent_variance(ind) = kss - sum(V .* V, 1)';
@@ -176,6 +178,9 @@ else
           likelihood(hyperparameters.lik, test_y, latent_mean(ind), ...
                      latent_variance(ind));
     end
+
+    % TODO: calculate fault means/variances
+
     % set counter to index of last processed data point
     num_processed = ind(end);
   end
