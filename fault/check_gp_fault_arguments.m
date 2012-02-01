@@ -40,7 +40,7 @@ function [hyperparameters, inference_method, mean_function, ...
           covariance_function, likelihood, a_function, b_function] ...
       = check_gp_fault_arguments(hyperparameters, inference_method, ...
           mean_function, covariance_function, likelihood, a_function, ...
-          b_function, train_x)
+          b_function, fault_covariance_function, train_x)
 
 % classification likelihoods not allowed
 if (strcmp(func2str(likelihood), 'likErf') || ...
@@ -88,6 +88,14 @@ end
 if (strcmp(first_covariance_function, 'covFITC'));
   % only one possible inference method
   inference_method = @infFITC;
+end
+
+if (isempty(fault_covariance_function))
+    fault_covariance_function = covNoise;
+end
+if (ischar(fault_covariance_function) || isa(fault_covariance_function, 'function_handle'))
+  % make cell
+  fault_covariance_function = {fault_covariance_function};
 end
 
 if (isempty(likelihood))
@@ -162,4 +170,12 @@ end
 if (eval(feval(b_function{:})) ~= numel(hyperparameters.b))
   error('gpml_extensions:b_function_hyperparameters_size', ...
         'Number of b function hyperparameters disagree with b function');
+end
+
+if (~isfield(hyperparameters, 'fault_covariance_function'))
+  hyperparameters.fault_covariance_function = [];
+end
+if (eval(feval(fault_covariance_function{:})) ~= numel(hyperparameters.fault_covariance_function))
+  error('gpml_extensions:covariance_hyperparameters_size', ...
+        'Number of fault covariance function hyperparameters disagrees with fault covariance function');
 end
