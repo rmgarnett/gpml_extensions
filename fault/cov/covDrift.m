@@ -30,6 +30,7 @@ ind_x = (x(:, end) >= begin_time) & (x(:, end) <= end_time);
 % find covariances between points and changepoint boundaries
    c = [begin_time; end_time];
 K_cc = feval(cov{:}, others, c);
+K_cc = improve_covariance_conditioning(K_cc);
 K_xc = feval(cov{:}, others, x, c);
 
 % vector kxx
@@ -49,7 +50,10 @@ else
     if (~derivatives)
       K = feval(cov{:}, others, x);
       K2 = (K_xc / K_cc) * K_xc';
+      
       K = K - K2;
+      % hack for numerical stuff
+      K(diag_inds(K)) = max(diag(K), eps);
     else
       % derivatives wrt begin and end time
       if (i < 3)
