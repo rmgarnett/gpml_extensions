@@ -1,4 +1,4 @@
-function [post nlZ dnlZ] = infExactFault(hyp, mean, cov, lik, a, b, x, y)
+function [post nlZ dnlZ] = infExactFault(hyp, mean, cov, lik, a, b, fault_cov, x, y)
 % Exact inference for a GP with Gaussian likelihood. Compute a parametrization
 % of the posterior, the negative log marginal likelihood and its derivatives
 % w.r.t. the hyperparameters. See also "help infMethods".
@@ -22,17 +22,24 @@ n = size(x, 1);
 K = feval(cov{:}, hyp.cov, x);                      % evaluate covariance matrix
 m = feval(mean{:}, hyp.mean, x);                          % evaluate mean vector
 
-A = diag(feval(a{:}, hyp.a, x));              % evaluate A transformation matrix
+a = feval(a{:}, hyp.a, x);
+A = diag(a);              % evaluate A transformation matrix
+Ad = diag(a-1);
 b = feval(b{:}, hyp.b, x);                    % evaluate b transformation vector
 
 % fault covariance
-K_fault = A * K * A;
+AKA = A * K * A;
 
 % noise variance of likGauss
 sn2 = exp(2 * hyp.lik);
 
+% covariance of potentially faulty observation likelihood
+fault_K = feval(fault_cov{:}, hyp.fault_covariance_function, x);
+
+m = feval(mean{:}, hyp.mean, x);
+
 % Cholesky factor of covariance with noise
-L = chol(K_fault / sn2 + eye(n));
+L = chol((fault_K + K + Ad * K * Ad) / sn2 + eye(n)) ;
 alpha = solve_chol(L, (y - (A * m + b))) / sn2;
 
 post.alpha = alpha;                            % return the posterior parameters
