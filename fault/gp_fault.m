@@ -147,7 +147,6 @@ else
     id = (nact+1):min(nact+nperbatch,ns);               % data points to process
     
     as = feval(a{:}, hyp.a, xs(id,:));
-    As = diag(as);
     Asd = diag(as-1);
     bs = feval(b{:}, hyp.b, xs(id,:));
     
@@ -170,12 +169,18 @@ else
     if Ltril           % L is triangular => use Cholesky parameters (alpha,sW,L)
       V = L' \ (repmat(sW, 1, length(id)) .* (AKs));
       fs2(id) = kss - sum(V.*V,1)';                       % predictive variances
+        
+      V_fault = L' \ (repmat(sW, 1, length(id)) .* (Ms));
+      fault_s2(id) = fault_kss - sum(V_fault.*V_fault,1)';
+    
     else                % L is not triangular => use alternative parametrisation
       fs2(id) = kss + sum(AKs.*(L*AKs),1)';                 % predictive variances
+      fault_s2(id) = fault_kss + sum(Ms.*(L*Ms),1)'; 
     end
     fs2(id) = max(fs2(id),0);   % remove numerical noise i.e. negative variances
+    fault_s2(id) = max(fault_s2(id),0);
     ys2(id) = as.^2 .* (fs2(id) - kss) + Mss;
-    fault_s2(id) = fs2(id) - kss + Mss;
+    
     
     if nargin<12
       [lp(id) ymu(id) ys2(id)] = lik(hyp.lik, [], fmu(id), fs2(id));
