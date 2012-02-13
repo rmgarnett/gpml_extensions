@@ -11,13 +11,13 @@ function [varargout] = gp_test(hyp, inf, mean, cov, lik, x, y, xs, ys)
 % Please call check_gp_arguments before calling this function.
 %
 % Usage:
-%   [ymu ys2 fmu fs2 lp nlZ dnlZ] = ... 
+%   [ymu ys2 fmu fs2 lp nlZ dnlZ] = ...
 %     gp_test(hyp, inf, mean, cov, lik, x, y, xs, ys);
 %
 % where:
 %
 %   hyp      column vector of hyperparameters
-%   inf      function specifying the inference method 
+%   inf      function specifying the inference method
 %   cov      prior covariance function (see below)
 %   mean     prior mean function
 %   lik      likelihood function
@@ -33,7 +33,7 @@ function [varargout] = gp_test(hyp, inf, mean, cov, lik, x, y, xs, ys)
 %   lp       column vector (of length ns) of log predictive probabilities
 %   nlZ      returned value of the negative log marginal likelihood
 %   dnlZ     column vector of partial derivatives of the negative
-% 
+%
 % See also covFunctions.m, infMethods.m, likFunctions.m, meanFunctions.m.
 %
 % Based on code from:
@@ -50,10 +50,10 @@ function [varargout] = gp_test(hyp, inf, mean, cov, lik, x, y, xs, ys)
 dnlZ = [];
 try
   % no likelihood desired
-  if (nargout < 6) 
+  if (nargout < 6)
                post = inf(hyp, mean, cov, lik, x, y);
   % likelihood desired
-  elseif (nargout < 7) 
+  elseif (nargout < 7)
          [post nlZ] = inf(hyp, mean, cov, lik, x, y);
   % likelihood and derivatives desired
   else
@@ -66,7 +66,7 @@ end
 
 alpha = post.alpha;
    sW = post.sW;
-    L = post.L; 
+    L = post.L;
 
 % handle things for sparse representations
 if (issparse(alpha))
@@ -75,14 +75,14 @@ if (issparse(alpha))
 
   % convert L and sW if necessary
   if (issparse(L))
-    L = full(L(nz, nz)); 
+    L = full(L(nz, nz));
   end
   if (issparse(sW))
-    sW = full(sW(nz)); 
+    sW = full(sW(nz));
   end
-else 
+else
   % non-sparse representation
-  nz = true(size(alpha)); 
+  nz = true(size(alpha));
 end
 
 % in case L is not provided, we compute it
@@ -134,33 +134,33 @@ if (isfield(hyp, 'full_covariance') && hyp.full_covariance)
 else
 
   % allocate outputs
-  ymu = zeros(ns, 1); 
+  ymu = zeros(ns, 1);
   ys2 = zeros(ns, 1);
   fmu = zeros(ns, 1);
   fs2 = zeros(ns, 1);
    lp = zeros(ns, 1);
-  
+
   % number of data points per mini batch
   nperbatch = 5000;
   % number of already processed test data points
   nact = 0;
-  
+
   % process minibatches of test cases to save memory
   while (nact < ns)
     % data points to process
     id = (nact + 1):min(nact + nperbatch, ns);
-    
+
     % cross-covariances
     Ks  = feval(cov{:}, hyp.cov,  x(nz, :), xs(id, :));
     % self-variance
     kss = feval(cov{:}, hyp.cov, xs(id, :), 'diag');
-    
+
     % prior mean
     ms = feval(mean{:}, hyp.mean, xs(id, :));
-    
+
     % predictive means
     fmu(id) = ms + Ks' * full(alpha(nz));
-    
+
     % predictive variances
     if (Ltril)
       % L is triangular => use Cholesky parameters (alpha, sW, L)
@@ -175,19 +175,18 @@ else
     end
     % remove numerical noise i.e. negative variances
     fs2(id) = max(fs2(id), 0);
-    
+
     if (nargin < 9)
       [lp(id) ymu(id) ys2(id)] = lik(hyp.lik,     [], fmu(id), fs2(id));
     else
       [lp(id) ymu(id) ys2(id)] = lik(hyp.lik, ys(id), fmu(id), fs2(id));
     end
-    
-    % set counter to index of last processed data point  
+
+    % set counter to index of last processed data point
     nact = id(end);
   end
-  
+
   % assign output arguments
   varargout = {ymu, ys2, fmu, fs2, lp, nlZ, dnlZ};
   return;
 end
-
