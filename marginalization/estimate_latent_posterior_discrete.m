@@ -1,4 +1,4 @@
-function [latent_means latent_covariances hypersample_weights] = ...
+function [latent_means, latent_covariances, hypersample_weights] = ...
       estimate_latent_posterior_discrete(data, responses, train_ind, ...
           test_ind, prior_covariances, inference_method, mean_function, ...
           covariance_function, likelihood, hypersamples, full_covariance)
@@ -7,7 +7,7 @@ function [latent_means latent_covariances hypersample_weights] = ...
     full_covariance = false;
   end
   hyperparameters.full_covariance = full_covariance;
-  
+
   num_hypersamples = size(hypersamples.values, 1);
 
   train_x  = data(train_ind, :);
@@ -28,7 +28,7 @@ function [latent_means latent_covariances hypersample_weights] = ...
       hyperparameters.lik  = hypersamples.values(i, hypersamples.likelihood_ind);
       hyperparameters.mean = hypersamples.values(i, hypersamples.mean_ind);
       hyperparameters.cov  = hypersamples.values(i, hypersamples.covariance_ind);
-      
+
       if (full_covariance)
         [~, ~, latent_means(i, :), latent_covariances(i, :, :), ~, ...
          log_likelihoods(i)] = ...
@@ -50,7 +50,7 @@ function [latent_means latent_covariances hypersample_weights] = ...
       log_likelihoods(i) = -Inf;
     end
   end
-    
+
   hypersamples.log_likelihoods = -log_likelihoods;
   hypersample_weights = calculate_hypersample_weights(hypersamples);
 
