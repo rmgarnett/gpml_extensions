@@ -7,28 +7,31 @@ function [post nlZ dnlZ] = infExactFault(hyp, mean, cov, lik, a, b, fault_cov, x
 %
 % See also INFMETHODS.M.
 
-likstr = lik; 
+likstr = lik;
 if (~ischar(lik))
   likstr = func2str(lik); 
-end 
+end
 
 % NOTE: no explicit call to likGauss
-if (~strcmp(likstr,'likGauss'))
+if (~strcmp(likstr, 'likGauss'))
   error('Exact inference only possible with Gaussian likelihood');
 end
  
 n = size(x, 1);
 
-K = feval(cov{:}, hyp.cov, x);                      % evaluate covariance matrix
-m = feval(mean{:}, hyp.mean, x);                          % evaluate mean vector
+% evaluate covariance matrix
+K = feval(cov{:}, hyp.cov, x);
 
-a = feval(a{:}, hyp.a, x);
-A = diag(a);              % evaluate A transformation matrix
-Ad = diag(a-1);
-b = feval(b{:}, hyp.b, x);                    % evaluate b transformation vector
+% evaluate mean vector
+m = feval(mean{:}, hyp.mean, x);
 
-% fault covariance
-AKA = A * K * A;
+% evaluate A transformation matrix
+a  = feval(a{:}, hyp.a, x);
+A  = diag(a);
+Ad = diag(a - 1);
+
+% evaluate b transformation vector
+b = feval(b{:}, hyp.b, x);
 
 % noise variance of likGauss
 sn2 = exp(2 * hyp.lik);
@@ -42,9 +45,12 @@ m = feval(mean{:}, hyp.mean, x);
 L = chol((fault_K + K + Ad * K * Ad) / sn2 + eye(n)) ;
 alpha = solve_chol(L, (y - (A * m + b))) / sn2;
 
-post.alpha = alpha;                            % return the posterior parameters
-post.sW = ones(n, 1) / sqrt(sn2);               % sqrt of noise precision vector
-post.L = L;                                         % L = chol(eye(n)+sW*sW'.*K)
+% return the posterior parameters
+post.alpha = alpha;
+% sqrt of noise precision vector
+post.sW = ones(n, 1) / sqrt(sn2);
+% L = chol(eye(n) + sW * sW' .* K)
+post.L = L;
 
 % do we want the marginal likelihood?
 if (nargout > 1)
