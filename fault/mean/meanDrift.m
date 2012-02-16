@@ -3,19 +3,19 @@ function A = meanDrift(f, hyp, x, i)
 % Mean function that is 0 except on a specified interval, where it
 % takes a specified shape
 %
-% (x < begin_time or x > end_time)
-% ->  m(x) = 0   
+% (x < begin_time or x > begin_time + width)
+% ->  m(x) = 0
 %
 % (otherwise)
-% ->  m(x) = f((x - begin_time) / (end_time - begin_time))
+% ->  m(x) = f((x - begin_time) / (width))
 %
 % where f(x) is defined by interpolation of a given vector. The last
 % dimension of x is the dimension along which the "times" are defined.
 %
 % The hyperparameterd str:
 %
-% hyp = [ begin_time 
-%         end_time   ]
+% hyp = [ begin_time
+%         log(width) ]
 %
 % Based on code from:
 %
@@ -28,10 +28,10 @@ function A = meanDrift(f, hyp, x, i)
 %
 % See also MEANFUNCTIONS.M.
 
-% report number of hyperparameters 
+% report number of hyperparameters
 if (nargin < 3)
-  A = '2'; 
-  return; 
+  A = '2';
+  return;
 end
 
 if (numel(hyp) ~= 2)
@@ -39,7 +39,9 @@ if (numel(hyp) ~= 2)
 end
 
 begin_time = hyp(1);
-end_time   = hyp(2);
+width = exp(hyp(2));
+
+end_time = begin_time + width;
 
 % evaluate mean
 if (nargin == 3)
@@ -49,5 +51,5 @@ if (nargin == 3)
   A(ind) = interp1(linspace(0, 1), f, times);
 else
   % derivative
-  A = zeros(size(x, 1), 1);                                          
+  A = zeros(size(x, 1), 1);
 end

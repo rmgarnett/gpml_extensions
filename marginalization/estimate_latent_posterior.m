@@ -1,8 +1,8 @@
-function [latent_means latent_covariances hypersample_weights] = ...
+function [latent_means, latent_covariances, hypersample_weights, log_likelihoods] = ...
       estimate_latent_posterior(data, responses, test, inference_method, ...
                                 mean_function, covariance_function, ...
                                 likelihood, hypersamples, full_covariance)
-  
+
   if (nargin < 9)
     full_covariance = false;
   end
@@ -25,7 +25,7 @@ function [latent_means latent_covariances hypersample_weights] = ...
       hyperparameters.lik  = hypersamples.values(i, hypersamples.likelihood_ind);
       hyperparameters.mean = hypersamples.values(i, hypersamples.mean_ind);
       hyperparameters.cov  = hypersamples.values(i, hypersamples.covariance_ind);
-      
+
       if (full_covariance)
         [~, ~, latent_means(i, :), latent_covariances(i, :, :), ~, ...
          log_likelihoods(i)] = gp_test(hyperparameters, inference_method, ...
@@ -40,11 +40,13 @@ function [latent_means latent_covariances hypersample_weights] = ...
     catch message
       disp('error in estimate_latent_posterior:');
       disp(getReport(message));
-      log_likelihoods(i) = -Inf;
+      log_likelihoods(i) = Inf;
     end
   end
 
-  hypersamples.log_likelihoods = -log_likelihoods;
+  log_likelihoods = -log_likelihoods;
+
+  hypersamples.log_likelihoods = log_likelihoods;
   hypersample_weights = calculate_hypersample_weights(hypersamples);
 
 end

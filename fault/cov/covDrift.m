@@ -12,17 +12,19 @@ end
 
 % make sure z exists
 if (nargin < 4)
-  z = []; 
+  z = [];
 end
 
 % determine mode
-xeqz = (numel(z) == 0); 
+xeqz = (numel(z) == 0);
 diagonal = (strcmp(z, 'diag') && (numel(z) > 0));
 derivatives = (nargin == 5);
 
 begin_time = hyp(1);
-end_time   = hyp(2);
+width = exp(hyp(2));
 others     = hyp(3:end);
+
+end_time = begin_time + width;
 
 % find points that are within the interval of interest
 ind_x = (x(:, end) >= begin_time) & (x(:, end) <= end_time);
@@ -50,10 +52,10 @@ else
     if (~derivatives)
       K = feval(cov{:}, others, x);
       K2 = (K_xc / K_cc) * K_xc';
-      
+
       K = K - K2;
       % hack for numerical stuff
-      K(diag_inds(K)) = max(diag(K), eps);
+      K = K + eps * eye(size(K, 1));
     else
       % derivatives wrt begin and end time
       if (i < 3)
@@ -80,7 +82,7 @@ else
     return;
 
   % cross covariances Kxz
-  else                                                   
+  else
     % find points that are within the interval of interest
     ind_z = (z >= begin_time) & (z <= end_time);
 
