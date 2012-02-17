@@ -45,8 +45,6 @@ function [latent_means, latent_covariances, hypersample_weights, log_likelihoods
   end
 
   log_likelihoods = -log_likelihoods;
-
-  hypersamples.log_likelihoods = log_likelihoods;
-  hypersample_weights = calculate_hypersample_weights(hypersamples);
+  hypersample_weights = exp(log_likelihoods - max(log_likelihoods));
 
 end
