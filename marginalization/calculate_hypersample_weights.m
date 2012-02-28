@@ -1,35 +1,28 @@
 function hypersample_weights = calculate_hypersample_weights(hypersamples)
 
-  hypersamples.log_likelihoods(isinf(hypersamples.log_likelihoods)) ...
-      = min(hypersamples.log_likelihoods(isfinite(hypersamples.log_likelihoods))) - 1e3;
+  samples = hypersamples.values(:, hypersamples.marginal_ind);
+  [num_samples, num_hyperparameters] = size(samples);
 
-  [quad_noise_sd, quad_input_scales, quad_output_scale] = ...
-      hp_heuristics(hypersamples.values(:, hypersamples.marginal_ind), ...
-                    hypersamples.log_likelihoods, 100);
+  K = ones(num_samples);
+  L = ones(num_samples);
 
-  quad_gp.quad_noise_sd     = quad_noise_sd;
-  quad_gp.quad_input_scales = quad_input_scales;
-  quad_gp.quad_output_scale = quad_output_scale;
-  
-  num_hypersamples = size(hypersamples.values, 1);
-  num_hyperparameters = length(hypersamples.marginal_ind);
-  
-  for i = 1:num_hypersamples
-    gp.hypersamples(i).hyperparameters = ...
-        hypersamples.values(i, hypersamples.marginal_ind);
+  for i = hypersamples.marginal_ind
+    [x, y] = meshgrid(samples(:, i), samples(:, i));
+
+    K = K .* normpdf(x - y, 0, hypersamples.length_scales(i));
+
+    mu    = hypersamples.prior_means(i) * ones(2, 1);
+    Sigma = hypersamples.prior_variances(i) * ones(2) + ...
+            hypersamples.length_scales(i) * eye(2);
+
+    L = L .* reshape(mvnpdf([x(:) y(:)], mu, Sigma), ...
+                     num_samples, num_samples);
   end
-  
-  for i = 1:num_hyperparameters
-    gp.hyperparams(i).priorMean = hypersamples.prior_means(i);
-    gp.hyperparams(i).priorSD = sqrt(hypersamples.prior_variances(i));
-  end
-  
-  weights_mat = bq_params(gp, quad_gp);
-  
-  for i = 1:num_hypersamples
-    gp.hypersamples(i).logL = hypersamples.log_likelihoods(i);
-  end
-  
-  hypersample_weights = weights(gp, weights_mat)';
+
+  likelihoods = exp(hypersamples.log_likelihoods - ...
+                    max(hypersamples.log_likelihoods));
+
+  hypersample_weights = (L \ K) / L * likelihoods;
+  hypersample_wegihts = hypersample_weights / sum(hypersample_weights);
 
 end
