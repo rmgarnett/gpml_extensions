@@ -1,9 +1,9 @@
 function [varargout] = likPoisson(hyp, y, mu, s2, inf, i)
-  
+
 if (nargin < 2)
   % report number of hyperparameters
-  varargout = { '1' }; 
-  return; 
+  varargout = { '1' };
+  return;
 end
 
 z = hyp;
@@ -12,11 +12,11 @@ if (numel(y) == 0)
 end
 
 if (nargin < 5)
-  
-  no_sigma = (numel(s2) == 0) || ((numel(s2) == 1) && (s2 == 0));
-  
+
+  no_sigma = ((numel(s2) == 0) || ((numel(s2) == 1) && (s2 == 0)));
+
   if (no_sigma)
-    lambda = z * exp(mu) .* y;
+    lambda = z * exp(mu);
     lp = -lambda + log(lambda) .* y - gammaln(y + 1);
   else
     lp = zeros(size(y));
@@ -25,14 +25,14 @@ if (nargin < 5)
       lambdas = z * exp(r) .* y(i);
       lp(i) = mean(-lambdas + log(lambdas) * y(i) - gammaln(y(i) + 1));
     end
-  end    
- 
+  end
+
   if (nargout > 1)
     ymu = zeros(size(mu));
     for i = 1:length(ymu)
       min_range = mu(i) - 6 * sqrt(s2(i));
       max_range = mu(i) + 6 * sqrt(s2(i));
-      
+
       integral = @(f) exp(log(z) + f + norm_lpdf(f, mu(i), sqrt(s2(i))));
       ymu(i) = quadgk(integral, min_range, max_range);
     end
@@ -43,7 +43,7 @@ if (nargin < 5)
 
   varargout = {lp, ymu, ys2};
 else                                                            % inference mode
-  %switch inf 
+  %switch inf
     %case 'infLaplace'
       if (nargin == 5)
         f = mu;
