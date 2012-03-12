@@ -1,4 +1,4 @@
-function A = meanDrift(f, hyp, x, i)
+function A = meanDrift(mean, hyp, x, i)
 
 % Mean function that is 0 except on a specified interval, where it
 % takes a specified shape
@@ -9,8 +9,8 @@ function A = meanDrift(f, hyp, x, i)
 % (otherwise)
 % ->  m(x) = f((x - begin_time) / (width))
 %
-% where f(x) is defined by interpolation of a given vector. The last
-% dimension of x is the dimension along which the "times" are defined.
+% where f(x) is defined by a GPML mean function. The last dimension of
+% x is the dimension along which the "times" are defined.
 %
 % The hyperparameterd str:
 %
@@ -30,26 +30,24 @@ function A = meanDrift(f, hyp, x, i)
 
 % report number of hyperparameters
 if (nargin < 3)
-  A = '2';
+  A = ['2+' feval(mean{:})];
   return;
 end
 
-if (numel(hyp) ~= 2)
-  error('Exactly two hyperparameters needed.');
-end
-
 begin_time = hyp(1);
-width = exp(hyp(2));
+width      = exp(hyp(2));
+others     = hyp(3:end);
+end_time   = begin_time + width;
 
-end_time = begin_time + width;
+A = zeros(size(x, 1), 1);
 
-% evaluate mean
+ind = (x(:, end) >= begin_time) & (x(:, end) <= end_time);
+transformed_x = (x(ind, end) - begin_time) / (end_time - begin_time);
+
 if (nargin == 3)
-  ind = (x(:, end) >= begin_time) & (x(:, end) <= end_time);
-  times = (x(ind, end) - begin_time) / (end_time - begin_time);
-  A = zeros(size(x, 1), 1);
-  A(ind) = interp1(linspace(0, 1), f, times);
+  % evaluate mean
+  A(ind) = feval(mean{:}, others, transformed_x);
 else
-  % derivative
-  A = zeros(size(x, 1), 1);
+  % evaluate derivatives
+  A(ind) = feval(mean{:}, others, transformed_x, i);
 end
