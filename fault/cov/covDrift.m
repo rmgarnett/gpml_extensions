@@ -1,4 +1,4 @@
-function K = covDrift(cov, hyp, x, z, i)
+ function K = covDrift(cov, hyp, x, z, i)
 
 % Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2010-09-10.
 %
@@ -21,7 +21,7 @@ diagonal = (strcmp(z, 'diag') && (numel(z) > 0));
 derivatives = (nargin == 5);
 
 begin_time = hyp(1);
-width = exp(hyp(2));
+width      = exp(hyp(2));
 others     = hyp(3:end);
 
 end_time = begin_time + width;
