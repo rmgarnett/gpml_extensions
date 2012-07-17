@@ -10,11 +10,11 @@
 % See also covFunctions.m.
 
 function result = covConstMatrix(K, hyperparameters, train_ind, test_ind, i)
-
+ 
   % number of hyperparameters
   if (nargin < 3)
     result = '0';
-
+    
   % training covariance
   elseif (nargin == 3)
     result = K(train_ind, train_ind);
