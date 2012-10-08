@@ -16,7 +16,7 @@ function result = covConstMatrix(K, hyperparameters, train_ind, test_ind, i)
     result = '0';
     
   % training covariance
-  elseif (nargin == 3)
+  elseif ((nargin == 3) || ((nargin == 4) && (numel(test_ind) == 0)))
     result = K(train_ind, train_ind);
 
   % diagonal training variance
