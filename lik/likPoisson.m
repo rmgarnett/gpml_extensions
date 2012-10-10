@@ -1,69 +1,136 @@
-function [varargout] = likPoisson(hyp, y, mu, s2, inf, i)
+% provides a gpml-compatiable likelihood function for
+% poisson-distributed observations. this can be used to bulld a
+% log-gaussian cox model for fitting a nonhomogeneous poisson process
+% to data. the likelihood is given by
+%
+% p(y | f) = \prod_i Poisson(y_i | exp(f_i)).
 
-if (nargin < 2)
+function [varargout] = likPoisson(hyperparameters, observations, ...
+        latent_means, latent_variances, inference_method, hyperparameter_ind)
+
   % report number of hyperparameters
-  varargout = { '1' };
-  return;
-end
-
-z = hyp;
-if (numel(y) == 0)
-  y = ones(size(mu));
-end
-
-if (nargin < 5)
-
-  no_sigma = ((numel(s2) == 0) || ((numel(s2) == 1) && (s2 == 0)));
-
-  if (no_sigma)
-    lambda = z * exp(mu);
-    lp = -lambda + log(lambda) .* y - gammaln(y + 1);
-  else
-    lp = zeros(size(y));
-    for i = 1:length(mu)
-      r = mu(i) + sqrt(s2(i)) * randn(10000, 1);
-      lambdas = z * exp(r) .* y(i);
-      lp(i) = mean(-lambdas + log(lambdas) * y(i) - gammaln(y(i) + 1));
-    end
+  if (nargin < 2)
+    varargout = { '0' };
+    return;
   end
 
-  if (nargout > 1)
-    ymu = zeros(size(mu));
-    for i = 1:length(ymu)
-      min_range = mu(i) - 6 * sqrt(s2(i));
-      max_range = mu(i) + 6 * sqrt(s2(i));
+  num_points = numel(latent_means);
 
-      integral = @(f) exp(log(z) + f + norm_lpdf(f, mu(i), sqrt(s2(i))));
-      ymu(i) = quadgk(integral, min_range, max_range);
-    end
-    if (nargout > 2)
-      ys2 = s2;
-    end
+  % create dummy observations if needed
+  if (numel(observations) == 0)
+    observations = ones(num_points, 1);
   end
 
-  varargout = {lp, ymu, ys2};
-else                                                            % inference mode
-  %switch inf
-    %case 'infLaplace'
-      if (nargin == 5)
-        f = mu;
-        lambda = z * exp(f) .* ones(size(y));
-        lp = -lambda + log(lambda) .* y - gammaln(y + 1);
-        dlp = [];
-        d2lp = [];
-        d3lp = [];
+  % evaluates log(p(y | log(\lambda)))
+  log_poisson_likelihood = @(observations, log_lambda) ...
+      observations .* log_lambda - ...
+      exp(log_lambda) - ...
+      gammaln(observations + 1);
+
+  % evaluates log(N(log(\lambda); \mu, \sigma^2))
+  log_gaussian_likelihood = @(log_lambda, latent_mean, latent_std) ...
+      (-0.5 * ((log_lambda - latent_mean) ./ latent_std).^2 - ...
+       log(latent_std) - ...
+       log(2 * pi) / 2);
+
+  % evaluates Poisson(y; \lambda) N(log(\lambda); \mu, \sigma^2)
+  likelihood = ...
+      @(observations, log_lambda, latent_mean, latent_std) ...
+      exp(log_poisson_likelihood(observations, log_lambda) + ...
+          log_gaussian_likelihood(log_lambda, latent_mean, latent_std));
+  
+  % prediction mode
+  if (nargin < 5)
+
+    % check for the case that only latent means have been passed in
+    empty_variances = ...
+        ((numel(latent_variances) == 0) || ...
+         ((numel(latent_variances) == 1) && (latent_variances == 0)));
+    
+    % provide p(y | log(\lambda) = \mu)
+    if (empty_variances)
+      lambda = exp(latent_means);
+      log_probabilities = log_poisson_likelihood(observations, lambda);
+      varargout = {log_probabilities};
+    else
+
+      log_probabilities = zeros(num_points, 1);
+      if (nargout > 1)
+        observation_means = zeros(num_points, 1);
+        if (nargout > 2)
+          observation_variances = zeros(num_points, 1);
+        else
+          observation_variances = [];
+        end
+      else
+        observation_means = [];
+      end
+      
+      for i = 1:num_points
+        latent_mean     = latent_means(i);
+        latent_variance = latent_variances(i);
+        latent_std      = sqrt(latent_variance);
+
+        lower_limit = latent_mean - 6 * latent_std;
+        upper_limit = latent_mean + 6 * latent_std;
+
+        % calculates p(y | x, D) as a function of y at the given point
+        predictive_distribution = ...
+            @(y) ...
+            quadgk(@(log_lambda) ...
+                   likelihood(y, log_lambda, latent_mean, latent_std), ...
+                   lower_limit, upper_limit);
+        
+        log_probabilities(i) = log(predictive_distribution(observations(i)));
+
+        % evaluates E[y | x, D] and Var[y | x, D] at this point
+        % (using analytic results for log normal distributions)
         if (nargout > 1)
-          dlp = y - z * exp(f);
+          % E[y | x, D]
+          observation_means(i) = exp(latent_mean + latent_variance / 2); 
           if (nargout > 2)
-            d2lp = dlp - y;
-            if (nargout > 3)
-              d3lp = d2lp;
-            end
+            % Var[y | x, D]
+            observation_variances(i) = ...
+                observation_means(i) + ...
+                (exp(latent_variance) - 1) * exp(2 * latent_mean + latent_variance);
           end
         end
-        varargout = {sum(lp), dlp, d2lp, d3lp};
-      else
-        varargout = {zeros(size(y)), zeros(size(y))};
       end
-  %end
+      varargout = {log_probabilities, observation_means, observation_variances};
+    end
+
+  % inference mode
+  else
+    switch (inference_method)
+      case 'infLaplace'
+        % calculates first second and third derivatives of the log
+        % predictive distribution, log(p(y | log(\lambda))) with respect
+        % to log(\lambda)
+        if (nargin == 5)
+          log_probabilities = ...
+              likPoisson(hyperparameters, observations, latent_means, []);
+
+          first_derivative  = [];
+          second_derivative = [];
+          third_derivative  = [];
+          
+          if (nargout > 1)
+            first_derivative = observations - exp(latent_means);
+            if (nargout > 2)
+              second_derivative = first_derivative - observations;
+              if (nargout > 3)
+                third_derivative = second_derivative;
+              end
+            end
+          end
+          varargout = {sum(log_probabilities), first_derivative, ...
+                       second_derivative, third_derivative};
+
+        % calculates derivatives with respect to hyperparamters
+        % (there are none)
+        else
+          varargout = {[]};
+        end
+    end
+  end
 end
