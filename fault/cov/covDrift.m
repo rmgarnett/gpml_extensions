@@ -20,11 +20,12 @@ xeqz = (numel(z) == 0);
 diagonal = (strcmp(z, 'diag') && (numel(z) > 0));
 derivatives = (nargin == 5);
 
-begin_time = hyp(1);
-width      = exp(hyp(2));
-others     = hyp(3:end);
+central_time = hyp(1);
+width        = exp(hyp(2));
+others       = hyp(3:end);
 
-end_time = begin_time + width;
+begin_time = central_time - width / 2;
+end_time   = central_time + width / 2;
 
 % find points that are within the interval of interest
 ind_x = (x(:, end) >= begin_time) & (x(:, end) <= end_time);

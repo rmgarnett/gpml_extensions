@@ -34,10 +34,12 @@ if (nargin < 3)
   return;
 end
 
-begin_time = hyp(1);
-width      = exp(hyp(2));
-others     = hyp(3:end);
-end_time   = begin_time + width;
+central_time = hyp(1);
+width        = exp(hyp(2));
+others       = hyp(3:end);
+
+begin_time = central_time - width / 2;
+end_time   = central_time + width / 2;
 
 A = zeros(size(x, 1), 1);
 
