@@ -11,8 +11,8 @@
 % we assume these sets of observations are generated indpendently
 % from a common GP prior:
 %
-%   p(y_i | X_i, \thetaa) = g(f_i(X_i))
-%   p(f_i | \theta)       = GP(f_i; \mu(\theta), K(\theta)),
+%   p(y_i | f_i, X_i, \theta) = g(f_i(X_i));
+%   p(f_i | \theta)           = GP(f_i; \mu(\theta), K(\theta)),
 %
 % where g is the observation likelihood and the hyperparameters
 % \theta are shared across the f_i.
