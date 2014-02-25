@@ -31,8 +31,8 @@
 % Outputs:
 %
 %         nlZ: the negative unormalized log posterior
-%        dnlZ: the gradient negative of the unnormalized log posterior
-%        HnlZ: the Hessian negative of the unnormalized log posterior
+%        dnlZ: the gradient of the negative unnormalized log posterior
+%        HnlZ: the Hessian of the negative unnormalized log posterior
 %
 % Notes on Hessian
 % ----------------
