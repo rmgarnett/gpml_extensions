@@ -55,7 +55,7 @@ function [result, dnlZ, d2nlZ] = constant_prior(default_value, theta)
   end
 
   % negative log likelihood
-  nlZ = 0;
+  result = 0;
 
   % first derivative of negative log likelihood
   if (nargout >= 2)
