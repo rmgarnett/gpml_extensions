@@ -1,4 +1,4 @@
-% UPDATE_POStERIOR updates GPML posterior given a new observation.
+% UPDATE_POSTERIOR updates GPML posterior given a new observation.
 %
 % This function provides a fast update for a GPML posterior structure
 % given a single new observation, avoiding O(N^3) retraining time.
