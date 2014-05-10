@@ -27,7 +27,7 @@
 
 % Copyright (c) Roman Garnett, 2014
 
-function result = constant_mean(hyperparameter, x, i, j)
+function result = constant_mean(hyperparameter, x, ~, ~)
 
   % report number of hyperparameters
   if (nargin <= 1)
