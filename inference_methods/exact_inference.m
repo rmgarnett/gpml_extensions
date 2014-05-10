@@ -147,7 +147,8 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
       d2m_didj = feval(mean_function{:}, hyperparameters.mean, x, i, j);
 
       HnlZ.H(mean_offset + i, mean_offset + j) = ...
-          dm(:, i)' * V_inv * dm(:, j);
+          dm(:, i)' * V_inv * dm(:, j) + ...
+          d2m_didj' * alpha;
     end
 
     % mean/noise Hessian entry
