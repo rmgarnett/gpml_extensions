@@ -133,7 +133,6 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
     else
       num_lik = 0;
     end
-    num_mean = num_hyperparameters - num_cov - num_lik;
 
     HnlZ.H = zeros(num_hyperparameters);
     HnlZ.covariance_ind = 1:num_cov;
