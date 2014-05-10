@@ -20,7 +20,7 @@
 % Inputs:
 %
 %   default_value: (ignored)
-%           theta: the value of the hyperparameter
+%           theta: the value of the hyperparameter (ignored)
 %
 % Outputs:
 %
@@ -46,7 +46,7 @@
 
 % Copyright (c) Roman Garnett, 2014
 
-function [result, dnlZ, d2nlZ] = constant_prior(default_value, theta)
+function [result, dnlZ, d2nlZ] = constant_prior(default_value, ~)
 
   % draw "sample"
   if (nargin < 2)
