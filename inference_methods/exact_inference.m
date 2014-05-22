@@ -159,7 +159,7 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   % compute and store V^{-1} K'_i for Hessian computations
   V_inv_dK = zeros(n, n, num_cov);
 
-  % handle gradient/Hessian entries with respect tocovariance
+  % handle gradient/Hessian entries with respect to covariance
   % hyperparameters
   for i = 1:num_cov
     dK = feval(covariance_function{:}, hyperparameters.cov, x, [], i);
