@@ -4,6 +4,6 @@ function result = is_chol(L)
 
   result = (isreal(diag(L))  && ...
             all(diag(L) > 0) && ...
-            all(all(tril(L, -1) == 0)));
+            isequal(L, triu(L)));
 
 end
