@@ -23,9 +23,9 @@
 %
 %   hyperparameter = [ c ].
 %
-% See also MEANFUNCTIONS.
+% See also MEANCONST, MEANFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2014
+% Copyright (c) 2014 Roman Garnett.
 
 function result = constant_mean(hyperparameter, x, ~, ~)
 
