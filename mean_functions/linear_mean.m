@@ -26,11 +26,11 @@
 %                       ...
 %                       a_D ].
 %
-% See also MEANFUNCTIONS.
+% See also MEANLINEAR, MEANFUNCTIONS.
 
 % Copyright (c) 2014 Roman Garnett.
 
-function result = linear_mean(hyperparameters, x, i, j)
+function result = linear_mean(hyperparameters, x, i, ~)
 
   % report number of hyperparameters
   if (nargin <= 1)
@@ -40,16 +40,16 @@ function result = linear_mean(hyperparameters, x, i, j)
 
   num_points = size(x, 1);
 
-  % mean
+  % evaluate prior mean
   if (nargin == 2)
     result = x * hyperparameters(:);
 
-  % derivative
+  % evaluate derivative with respect to hyperparameter
   elseif (nargin == 3)
     result = x(:, i);
 
-  % second derivative
-  elseif (nargin == 4)
+  % evaluate second derivative with respect to hyperparameter
+  else
     result = zeros(num_points, 1);
   end
 
