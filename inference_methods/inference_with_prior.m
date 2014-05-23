@@ -55,7 +55,7 @@
 %
 %      inference_method: a GPML inference method
 %                 prior: a function handle to a hyperparameter
-%                        prior (see below)
+%                        prior (see priors.m)
 %       hyperparameters: a GPML hyperparameter struct
 %         mean_function: a GPML mean function
 %   covariance_function: a GPML covariance function
@@ -87,38 +87,6 @@
 % See exact_inference.m for an example inference method supporting
 % this extended API. exact_inference may be used as a drop-in
 % replacement for infExact.
-%
-% Hyperprior specification
-% ------------------------
-%
-% The hyperparameter prior must be a function handle supporting the
-% interface:
-%
-%   [nlZ, dnlZ, HnlZ] = prior(hyperparameters)
-%
-% where:
-%
-%   hyperparameters: a GPML-compatible hyperparameters struct
-%               nlZ: the negative log prior
-%
-%                      -log p(\theta)
-%
-%              dnlZ: the partial derivatives of the negative log prior
-%                    with respect to each hyperparameter \theta_i:
-%
-%                      -d log p(\theta) / d \theta_i
-%
-%              HnlZ: the Hessian of the negative log prior with
-%                    respect to each pair of hyperparameters
-%                    (\theta_i, \theta_j):
-%
-%                      -d^2 log p(\theta) / d \theta_i d \theta_j
-%
-% The gradient dnlZ should have the same format as in GPML; namely, it
-% contains the derivatives of the negative log prior with respect to
-% the hyperparameters in a struct of the same layout as the
-% hyperparameters. If Hessians are desired, HnlZ should have the
-% format described in hessians.m.
 %
 % See also PRIORS, INDEPENDENT_PRIOR, EXACT_INFERENCE, HESSIANS.
 
