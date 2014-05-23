@@ -26,7 +26,7 @@
 
 % Copyright (c) Roman Garnett, 2013--2014
 
-function result = sqdexp_isotropic_covariance(hyperparameters, x, z, i, j)
+function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 
   % call covSEiso for everything but Hessian calculation
   if (nargin <= 1)
