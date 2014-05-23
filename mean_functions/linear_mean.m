@@ -1,17 +1,34 @@
-% Linear mean function. The mean function is parameterized as:
+% LINEAR_MEAN linear mean function.
 %
-% m(x) = sum_i a_i * x_i;
+% This provides a GPML-compatible mean function implementing a
+% linear mean function:
 %
-% The hyperparameter is:
+%   \mu(x) = a' x.
 %
-% hyp = [ a_1
-%         a_2
-%         ..
-%         a_D ]
+% This can be used as a drop-in replacement for meanLinear.
 %
-% Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2010-01-10.
+% This implementation supports an extended GPML syntax that allows
+% calculating the Hessian of \mu with respect to any pair of
+% hyperparameters. The syntax is:
+%
+%   dK2_didj = linear_mean(hyperparameters, x, i, j);
+%
+% where dK2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
+% and the Hessian is evaluated at x.
+%
+% These Hessians can be used to ultimately compute the Hessian of the
+% GP training likelihood (see, for example, exact_inference.m).
+%
+% The hyperparameters are:
+%
+%   hyperparameters = [ a_1
+%                       a_2
+%                       ...
+%                       a_D ].
+%
+% See also MEANFUNCTIONS.
 
-% See also MEANFUNCTIONSx.
+% Copyright (c) 2014 Roman Garnett.
 
 function result = linear_mean(hyperparameters, x, i, j)
 
