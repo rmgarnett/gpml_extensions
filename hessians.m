@@ -11,7 +11,7 @@
 %
 % These Hessians are stored in a struct called HnlZ.
 %
-% In all cases, HnlZ containst the _full_ Hessian matrix with respect
+% In all cases, HnlZ contains the _full_ Hessian matrix with respect
 % to the hyperparameters, including cross terms (for example,
 % involving covariance/mean parameter pairs). The Hessian matrix is
 % stored in the field
@@ -39,4 +39,4 @@
 %
 % See also EXACT_INFERENCE, INDEPENDENT_PRIOR, GP_POSTERIOR.
 
-% Copyright (c) Roman Garnett, 2014.
+% Copyright (c) 2014 Roman Garnett.
