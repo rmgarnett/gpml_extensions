@@ -41,7 +41,7 @@ function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = sqdexp_isotropic_covariance(hyperparameters, x, z, j, i);
+      result = isotropic_sqdexp_covariance(hyperparameters, x, z, j, i);
       return;
     end
 
