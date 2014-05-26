@@ -37,7 +37,7 @@
 
 % Copyright (c) Roman Garnett, 2013--2014
 
-function result = sqdexp_factor_covariance(d, hyperparameters, x, z, i, j)
+function result = factor_sqdexp_covariance(d, hyperparameters, x, z, i, j)
 
   % used during gradient and Hessian calculations to avoid constant recomputation
   persistent K;

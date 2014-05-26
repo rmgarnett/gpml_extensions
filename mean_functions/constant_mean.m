@@ -1,7 +1,7 @@
 % CONSTANT_MEAN constant mean function.
 %
 % This provides a GPML-compatible mean function implementing a
-% cosntant mean function:
+% constant mean function:
 %
 %   \mu(x) = c.
 %
@@ -11,7 +11,7 @@
 % calculating the Hessian of \mu with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = constant_mean(hyperparameters, x, z, i, j);
+%   dK2_didj = constant_mean(hyperparameters, x, i, j);
 %
 % where dK2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
 % and the Hessian is evaluated at x.
@@ -23,9 +23,9 @@
 %
 %   hyperparameter = [ c ].
 %
-% See also MEANFUNCTIONS.
+% See also MEANCONST, MEANFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2014
+% Copyright (c) 2014 Roman Garnett.
 
 function result = constant_mean(hyperparameter, x, ~, ~)
 

@@ -4,9 +4,9 @@
 % is simply a product of elementwise indepdenent arbitrary priors on
 % each hyperparameter.
 %
-% indepdendent_prior can be passed into, for example, gp_posterior
-% to acheive MAP (rather than MLE) hyperparameter inference. See
-% gp_posterior.m for more information.
+% indepdendent_prior can be passed into, for example,
+% infernce_with_prior to acheive MAP (rather than MLE) hyperparameter
+% inference. See inference_with_prior.m for more information.
 %
 % This file supports both calculating the negative log prior, its
 % gradient, and its (diagonal) Hessian matrix, as well as drawing a
@@ -120,6 +120,7 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
   if (want_gradient)
     dnlZ = hyperparameters;
   end
+
   if (want_hessian)
     num_hyperparameters = numel(unwrap(hyperparameters));
 
@@ -128,6 +129,7 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
     else
       num_cov = 0;
     end
+
     if (isfield(hyperparameters, 'lik'))
       num_lik = numel(hyperparameters.lik);
     else

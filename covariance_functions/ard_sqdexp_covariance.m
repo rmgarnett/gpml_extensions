@@ -27,7 +27,7 @@
 
 % Copyright (c) Roman Garnett, 2013--2014
 
-function result = sqdexp_ard_covariance(hyperparameters, x, z, i, j)
+function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
 
   % used during gradient and Hessian calculations to avoid constant recomputation
   persistent K;

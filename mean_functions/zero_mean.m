@@ -11,7 +11,7 @@
 % calculating the Hessian of \mu with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = zero_mean(hyperparameters, x, z, i, j);
+%   dK2_didj = zero_mean(hyperparameters, x, i, j);
 %
 % where dK2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
 % and the Hessian is evaluated at x.
@@ -21,7 +21,7 @@
 %
 % No hyperparameters are required.
 %
-% See also MEANFUNCTIONS.
+% See also MEANZERO, MEANFUNCTIONS.
 
 % Copyright (c) Roman Garnett, 2014
 
@@ -34,6 +34,6 @@ function result = zero_mean(~, x, ~, ~)
   end
 
   % any other mode always returns the all-zeros matrix.
-  result = zeros(size(x));
+  result = zeros(size(x, 1), 1);
 
 end
