@@ -1,4 +1,4 @@
-% ADD_PRIOR_TO_INFERNCE_METHOD adds hyperprior to GPML infernce method.
+% ADD_PRIOR_TO_INFERENCE_METHOD adds hyperprior to GPML inference method.
 %
 % This function may be used to generate a GPML compatible inference
 % method by combining a hyperparameter prior p(\theta) with an
