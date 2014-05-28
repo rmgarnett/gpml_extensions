@@ -33,7 +33,11 @@
 function new_posterior = update_posterior(hyperparameters, mean_function, ...
           covariance_function, x, posterior, x_star, y_star)
 
-  n = size(x, 1);
+  % check input
+  if (numel(y_star) > 1)
+    error('gpml_extensions:not_supported', ...
+          'update_posterior only supports rank-one updates!');
+  end
 
   noise_variance = exp(2 * hyperparameters.lik);
 
@@ -53,7 +57,8 @@ function new_posterior = update_posterior(hyperparameters, mean_function, ...
     new_L_column = linsolve(posterior.L, k_star, ...
                             struct('UT', true, 'TRANSA', true)) * (1 / noise_variance);
     new_posterior.L = [posterior.L, new_L_column; ...
-                       zeros(1, n), sqrt(1 + k / noise_variance - new_L_column' * new_L_column)];
+                       zeros(1, size(posterior.L, 1)), ...
+                       sqrt(1 + k / noise_variance - new_L_column' * new_L_column)];
   else
     % low-noise parameterization: posterior.L contains -inv(K + \sigma^2 I)
 
