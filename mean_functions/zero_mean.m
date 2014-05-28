@@ -23,7 +23,7 @@
 %
 % See also MEANZERO, MEANFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2014
+% Copyright (c) 2014 Roman Garnett.
 
 function result = zero_mean(~, x, ~, ~)
 

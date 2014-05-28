@@ -34,7 +34,7 @@
 %
 % See also INFMETHODS, HESSIANS.
 
-% Copyright (c) Roman Garnett, 2013--2014.
+% Copyright (c) 2013--2014 Roman Garnett.
 
 function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
           mean_function, covariance_function, ~, x, y)

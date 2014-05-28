@@ -45,8 +45,8 @@
 %         respect to the hyperparmeters
 %
 % See also GP.
-%
-% Copyright (c) 2013--2014 Roman Garnett
+
+% Copyright (c) 2013--2014 Roman Garnett.
 
 function [nlZ, dnlZ] = gp_likelihood_independent(hyperparameters, ...
           inference_method, mean_function, covariance_function, ...

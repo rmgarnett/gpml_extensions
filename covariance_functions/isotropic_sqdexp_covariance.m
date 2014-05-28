@@ -24,7 +24,7 @@
 %
 % See also COVFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2013--2014
+% Copyright (c) 2013--2014 Roman Garnett.
 
 function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 

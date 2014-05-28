@@ -35,7 +35,7 @@
 %
 % See also COVFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2013--2014
+% Copyright (c) 2013--2014 Roman Garnett.
 
 function result = factor_sqdexp_covariance(d, hyperparameters, x, z, i, j)
 

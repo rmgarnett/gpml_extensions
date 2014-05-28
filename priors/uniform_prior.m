@@ -44,7 +44,7 @@
 %
 % See also: PRIORS.
 
-% Copyright (c) Roman Garnett, 2014
+% Copyright (c) 2014 Roman Garnett.
 
 function [result, dnlZ, d2nlZ] = uniform_prior(lower_bound, upper_bound, theta)
 

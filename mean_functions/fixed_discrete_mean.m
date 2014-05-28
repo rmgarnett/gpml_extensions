@@ -11,7 +11,7 @@
 %
 % See also FIXED_DISCRETE_COVARIANCE, MEANFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2012--2014
+% Copyright (c) 2012--2014 Roman Garnett.
 
 function result = fixed_discrete_mean(mu, ~, x, ~)
 

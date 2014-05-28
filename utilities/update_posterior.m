@@ -28,7 +28,7 @@
 %
 % See also INFMETHODS.
 
-% Copyright (c) Roman Garnett, 2013--2014
+% Copyright (c) 2013--2014 Roman Garnett.
 
 function new_posterior = update_posterior(hyperparameters, mean_function, ...
           covariance_function, x, posterior, x_star, y_star)

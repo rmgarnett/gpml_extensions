@@ -29,7 +29,7 @@
 % GAUSSIAN PROCESS REGRESSION AND CLASSIFICATION Toolbox version 3.4
 %    for GNU Octave 3.2.x and Matlab 7.x
 %
-% Copyright (c) 2005-2013 Carl Edward Rasmussen & Hannes Nickisch.
+% Copyright (c) 2005--2013 Carl Edward Rasmussen & Hannes Nickisch.
 
 function result = is_chol(L)
 

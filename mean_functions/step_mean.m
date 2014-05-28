@@ -16,7 +16,7 @@
 %
 % See also MEANFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2012--2014
+% Copyright (c) 2012--2014 Roman Garnett.
 
 function result = step_mean(changepoint_dimension, hyperparameters, x, i)
 

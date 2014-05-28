@@ -87,7 +87,7 @@
 % See also: GP_POSTERIOR, PRIORS, CONSTANT_PRIOR, GAUSSIAN_PRIOR,
 % LAPLACE_PRIOR, UNIFORM_PRIOR, HESSIANS.
 
-% Copyright (c) Roman Garnett, 2014.
+% Copyright (c) 2014 Roman Garnett.
 
 function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
 

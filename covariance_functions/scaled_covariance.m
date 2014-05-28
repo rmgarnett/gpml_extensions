@@ -23,7 +23,7 @@
 %
 % See also COVFUNCTIONS.
 
-% Copyright (c) Roman Garnett, 2012--2014
+% Copyright (c) 2012--2014 Roman Garnett.
 
 function result = scaled_covariance(scaling_function, covariance_function, ...
           hyperparameters, x, z, i)

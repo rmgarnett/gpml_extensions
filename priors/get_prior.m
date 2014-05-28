@@ -29,7 +29,7 @@
 %
 % See also PRIORS.
 
-% Copyright (c) Roman Garnett, 2014
+% Copyright (c) 2014 Roman Garnett.
 
 function prior = get_prior(prior, varargin)
 
