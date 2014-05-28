@@ -64,6 +64,7 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   % matter what the user says
 
   n = size(x, 1);
+  I = eye(n);
 
   % initialize gradient and Hessian
   dnlZ = hyperparameters;
@@ -77,50 +78,84 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   HnlZ.likelihood_ind = (num_cov + 1);
   HnlZ.mean_ind       = (num_cov + 2):num_hyperparameters;
 
-  % first, compute posterior struct
-
-  % prior mean and covariance
-  K = feval(covariance_function{:}, hyperparameters.cov,  x);
-  m = feval(mean_function{:},       hyperparameters.mean, x);
-
-  noise_variance = exp(2 * hyperparameters.lik);
-
-  % handle small noise specially to avoid numerical problems (GPML 3.4)
-  low_noise = (noise_variance < 1e-6);
-  if (low_noise)
-    factor = 1;
-    L = chol(K + noise_variance * eye(n));
-    % use alternative parameterization in low-noise case
-    posterior.L = -solve_chol(L, eye(n));
-  else
-    factor = (1 / noise_variance);
-    L = chol(K * factor + eye(n));
-    posterior.L = L;
-  end
-
-  y = y - m;
-  alpha = solve_chol(L, y) * factor;
-
-  posterior.alpha = alpha;
-  posterior.sW    = ones(n, 1) * (1 / sqrt(noise_variance));
+  % convenience handles
+  mu = @(varargin) feval(mean_function{:},       hyperparameters.mean, varargin{:});
+  K  = @(varargin) feval(covariance_function{:}, hyperparameters.cov,  varargin{:});
 
   % computes tr(AB) for symmetric A, B
   product_trace = @(A, B) (A(:)' * B(:));
+
+  noise_variance = exp(2 * hyperparameters.lik);
+  high_noise = (noise_variance >= 1e-6);
+
+  % compute posterior if needed
+  if (isstruct(y))
+    % in case a posterior is provided, we need to calculate:
+    %
+    % - (y - mu(x))
+    % - L = chol(K + sigma^2 I)
+
+    posterior = y;
+    alpha = posterior.alpha;
+
+    % derive y from posterior.alpha
+    V = K(x) + diag(noise_variance + zeros(n, 1));
+    y = V * posterior.alpha;
+
+    if (is_chol(posterior.L))
+      % high-noise parameterization: posterior.L contains chol(K / sigma^2 + I)
+
+      factor = (1 / noise_variance);
+      L = posterior.L;
+    else
+      % low-noise parameterization: posterior.L contains -inv(K + \sigma^2 I)
+      % in this case it's fastest to recompute L
+
+      factor = 1;
+      L = chol(V);
+    end
+
+    V_inv_times = @(x) solve_chol(L, x) * factor;
+
+  else
+    % handle small noise specially to avoid numerical problems (GPML 3.4)
+    if (high_noise)
+      % high-noise parameterization: posterior.L contains chol(K / sigma^2 + I)
+
+      factor = (1 / noise_variance);
+      L = chol(K(x) * factor + I);
+      posterior.L = L;
+    else
+      % low-noise parameterization: posterior.L contains -inv(K + \sigma^2 I)
+
+      factor = 1;
+      L = chol(K(x) + diag(noise_variance + zeros(n, 1)));
+      posterior.L = -solve_chol(L, I);
+    end
+
+    V_inv_times = @(x) solve_chol(L, x) * factor;
+
+    y = y - mu(x);
+    alpha = V_inv_times(y);
+
+    posterior.alpha = alpha;
+    posterior.sW    = ones(n, 1) * (1 / sqrt(noise_variance));
+  end
 
   % negative log likelihood
   nlZ = sum(log(diag(L))) + ...
         0.5 * (y' * alpha + n * log(2 * pi / factor));
 
   % calculate (K + \sigma^2 I)^{-1} if needed
-  if (low_noise)
+  if (is_chol(posterior.L))
+    V_inv = V_inv_times(I);
+  else
     % desired inverse already calculated in low-noise case
     V_inv = -posterior.L;
-  else
-    V_inv = solve_chol(L, eye(n)) * factor;
   end
 
   % precompute (K + \sigma^2 I)^{-1}\alpha; it's used a lot
-  V_inv_alpha = solve_chol(L, alpha) * factor;
+  V_inv_alpha = V_inv_times(alpha);
 
   % derivative with respect to log noise scale
   dnlZ.lik = noise_variance * (trace(V_inv) - alpha' * alpha);
@@ -136,17 +171,17 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
 
   % handle gradient/Hessian entries with respect to mean hyperparameters
   for i = 1:num_mean
-    dm(:, i) = feval(mean_function{:}, hyperparameters.mean, x, i);
+    dm(:, i) = mu(x, i);
 
     % gradient with respect to this mean parameter
     dnlZ.mean(i) = -dm(:, i)' * alpha;
 
     % mean/mean Hessian entries
     for j = 1:i
-      d2m_didj = feval(mean_function{:}, hyperparameters.mean, x, i, j);
+      d2m_didj = mu(x, i, j);
 
       HnlZ.H(HnlZ.mean_ind(i), HnlZ.mean_ind(j)) = ...
-          dm(:, i)' * V_inv * dm(:, j) + ...
+          dm(:, i)' * V_inv_times(dm(:, j)) + ...
           d2m_didj' * alpha;
     end
 
@@ -161,16 +196,16 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   % handle gradient/Hessian entries with respect tocovariance
   % hyperparameters
   for i = 1:num_cov
-    dK = feval(covariance_function{:}, hyperparameters.cov, x, [], i);
+    dK = K(x, [], i);
 
-    V_inv_dK(:, :, i) = solve_chol(L, dK) * factor;
+    V_inv_dK(:, :, i) = V_inv_times(dK);
 
     % gradient with respect to this covariance parameter
     dnlZ.cov(i) = 0.5 * (trace(V_inv_dK(:, :, i)) - alpha' * dK * alpha);
 
     % covariance/covariance Hessian entries
     for j = 1:i
-      HK = feval(covariance_function{:}, hyperparameters.cov, x, [], i, j);
+      HK = K(x, [], i, j);
 
       HnlZ.H(HnlZ.covariance_ind(i), HnlZ.covariance_ind(j)) = ...
           y' * V_inv_dK(:, :, i) * V_inv_dK(:, :, j) * alpha + ...
