@@ -32,7 +32,7 @@
 
 function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i)
 
-  % check for covariance matrix
+  % check for dimension
   if (nargin == 0)
     error('gpml_extensions:missing_argument', ...
           'n must be specified!');
@@ -68,7 +68,7 @@ function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i
 
     [row, column] = find(A == i);
 
-    % derivative of Choleksy factor
+    % derivative of Cholesky factor
     dL = zeros(n);
     if (row == column)
       % diagonal entries have exp() transformation applied
