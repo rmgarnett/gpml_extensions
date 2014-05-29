@@ -44,62 +44,39 @@ function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i
     return;
   end
 
-  % build K
+  % build Cholesky factor of K
   L = zeros(n);
   L(triu(true(n))) = hyperparameters(:);
   L(1:(n + 1):end) = exp(diag(L));
-  K = L' * L;
 
-  % training covariance
-  if ((nargin == 3) || ((nargin == 4) && isempty(test_ind)))
-    result = K(train_ind, train_ind);
-    return;
+  % covariance mode
+  if (nargin <= 4)
+    K = L' * L;
+    result = fixed_discrete_covariance(K, [], train_ind, test_ind);
 
-  % diagonal training variance
-  elseif ((nargin == 4) && strcmp(test_ind, 'diag'))
-    diagonal = diag(K);
-    result = diagonal(train_ind);
-    return;
-
-  % test covariance
-  elseif (nargin == 4)
-    result = K(train_ind, test_ind);
-    return;
-  end
-
-  % derivatives
-
-  % build lookup matrix
-  A = zeros(n);
-  A(triu(true(n))) = (1:numel(hyperparameters(:)));
-
-  [row, column] = find(A == i);
-
-  % derivative of Choleksy factor
-  dL = zeros(n);
-  if (row == column)
-    % diagonal entries have exp() transformation applied
-    dL(row, column) = L(row, column);
+  % derivatives mode
   else
-    dL(row, column) = 1;
-  end
 
-  % derivative of covariance matrix
-  dK = dL' * L;
-  dK = dK + dK';
+    % build lookup matrix
+    A = zeros(n);
+    A(triu(true(n))) = (1:numel(hyperparameters(:)));
 
-  % training derivatives
-  if (isempty(test_ind))
-    result = dK(train_ind, train_ind);
+    [row, column] = find(A == i);
 
-  % diagonal training derivatives
-  elseif (strcmp(test_ind, 'diag'))
-    diagonal = diag(dK);
-    result = diagonal(train_ind);
+    % derivative of Choleksy factor
+    dL = zeros(n);
+    if (row == column)
+      % diagonal entries have exp() transformation applied
+      dL(row, column) = L(row, column);
+    else
+      dL(row, column) = 1;
+    end
 
-  % test derivatives
-  else
-    result = dK(train_ind, test_ind);
+    % derivative of covariance matrix
+    dK = dL' * L;
+    dK = dK + dK';
+
+    result = fixed_discrete_covariance(dK, [], train_ind, test_ind);
   end
 
 end
