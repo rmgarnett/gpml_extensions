@@ -14,7 +14,7 @@
 
 % Copyright (c) 2012--2014 Roman Garnett.
 
-function result = fixed_discrete_covariance(K, ~, train_ind, test_ind, i)
+function result = fixed_discrete_covariance(K, ~, train_ind, test_ind, i, ~)
 
   % check for covariance matrix
   if (nargin == 0)
