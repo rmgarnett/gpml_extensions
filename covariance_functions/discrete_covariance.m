@@ -8,28 +8,29 @@
 % given as integers between 1 and n, which simply index the provided
 % matrix.
 %
-% The hyperparameters specify the lower triangluar part of the
-% covariance matrix:
+% The hyperparameters specify the upper-triangular part of the
+% Cholesky factor of K, where the (positive) diagonal elements are
+% specified by their logarithm.  If L = chol(K), so K = L' L, then:
 %
-%   hyperparameters = [ K_11 ...
-%                       K_21 ...
-%                       ....
-%                       K_n1 ...
-%                       K_22 ...
-%                       ....
-%                       K_n2 ...
-%                       ....
-%                       K_nn ].
+%   hyperparameters = [ log(L_11) ...
+%                           L_21  ...
+%                       log(L_22) ...
+%                           L_31  ...
+%                           L_32  ...
+%                           ....
+%                       log(L_nn) ].
 %
 % This can be generated, e.g., with
 %
-%   hyperparameters = K(tril(true(n)));
+%   L = chol(K);
+%   L(1:(n + 1):end) = log(diag(L));
+%   hyperparameters = L(triu(true(n)));
 %
 % See also FIXED_DISCRETE_COVARIANCE, COVFUNCTIONS.
 
 % Copyright (c) 2014 Roman Garnett.
 
-function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i, ~)
+function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i)
 
   % check for covariance matrix
   if (nargin == 0)
@@ -44,9 +45,10 @@ function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i
   end
 
   % build K
-  K = zeros(n);
-  K(tril(true(n))) = hyperparameters(:);
-  K = K + tril(K, -1)';
+  L = zeros(n);
+  L(triu(true(n))) = hyperparameters(:);
+  L(1:(n + 1):end) = exp(diag(L));
+  K = L' * L;
 
   % training covariance
   if ((nargin == 3) || ((nargin == 4) && isempty(test_ind)))
@@ -69,29 +71,35 @@ function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i
 
   % build lookup matrix
   A = zeros(n);
-  A(tril(true(n))) = (1:numel(hyperparameters(:)));
+  A(triu(true(n))) = (1:numel(hyperparameters(:)));
 
   [row, column] = find(A == i);
 
+  % derivative of Choleksy factor
+  dL = zeros(n);
+  if (row == column)
+    % diagonal entries have exp() transformation applied
+    dL(row, column) = L(row, column);
+  else
+    dL(row, column) = 1;
+  end
+
+  % derivative of covariance matrix
+  dK = dL' * L;
+  dK = dK + dK';
+
   % training derivatives
   if (isempty(test_ind))
-    result = zeros(numel(train_ind));
-    result(train_ind == row, train_ind == column) = 1;
-    result(train_ind == column, train_ind == row) = 1;
+    result = dK(train_ind, train_ind);
 
   % diagonal training derivatives
   elseif (strcmp(test_ind, 'diag'))
-    [row, column] = find(A == i);
-    result = zeros(numel(train_ind), 1);
-    if (row == column)
-      result(train_ind == row) = 1;
-    end
+    diagonal = diag(dK);
+    result = diagonal(train_ind);
 
   % test derivatives
   else
-    result = zeros(numel(train_ind), numel(test_ind));
-    result(train_ind == row,    test_ind == column) = 1;
-    result(train_ind == column, test_ind == row) = 1;
+    result = dK(train_ind, test_ind);
   end
 
 end
