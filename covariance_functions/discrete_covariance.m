@@ -52,6 +52,11 @@ function result = discrete_covariance(n, hyperparameters, train_ind, test_ind, i
   % covariance mode
   if (nargin <= 4)
     K = L' * L;
+
+    if (nargin == 3)
+      test_ind = [];
+    end
+
     result = fixed_discrete_covariance(K, [], train_ind, test_ind);
 
   % derivatives mode
