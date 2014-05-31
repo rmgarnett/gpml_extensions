@@ -1,4 +1,4 @@
-% SQDEXP_FACTOR_COVARIANCE squared exponential "factor analysis covariance."
+% FACTOR_SQDEXP_COVARIANCE squared exponential "factor analysis covariance."
 %
 % This provides a GPML-compatible covariance function implementing the
 % "factor analysis covariance:"
@@ -14,7 +14,7 @@
 % hyperparameters. The syntax is:
 %
 %   dK2_didj = ...
-%      sqdexp_ard_covariance(hyperparameters, x, z, i, j);
+%      factor_sqdexp_covariance(hyperparameters, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
@@ -126,13 +126,13 @@ function result = factor_sqdexp_covariance(d, hyperparameters, x, z, i, j)
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = sqdexp_factor_covariance(d, hyperparameters, x, z, j, i);
+      result = factor_sqdexp_covariance(d, hyperparameters, x, z, j, i);
       return;
     end
 
     % Hessians involving the log output scale
     if (j == numel(hyperparameters))
-      result = 2 * sqdexp_factor_covariance(d, hyperparameters, x, z, i);
+      result = 2 * factor_sqdexp_covariance(d, hyperparameters, x, z, i);
       return;
     end
 
