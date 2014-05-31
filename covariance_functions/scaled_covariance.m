@@ -19,7 +19,7 @@
 % The hyperparameters should be specified as:
 %
 % hyperparameters = [    scaling_function hyperparameters(:)
-%                     covariance_function hyperparameters(:) ];
+%                     covariance_function hyperparameters(:) ]
 %
 % See also COVFUNCTIONS.
 
