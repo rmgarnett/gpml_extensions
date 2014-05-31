@@ -5,8 +5,8 @@
 % covariance matrix K.
 %
 % This implementation assumes that the training and test inputs are
-% given as integers between 1 and n, which simply index the
-% provided matrix.
+% given as integers between 1 and n, which simply index the provided
+% matrix.
 %
 % There are no hyperparameters requried.
 %
