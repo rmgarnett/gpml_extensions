@@ -1,4 +1,4 @@
-% SQDEXP_ISOTROPIC_COVARIANCE isotropic squared exponential covariance.
+% ISOTROPIC_SQDEXP_COVARIANCE isotropic squared exponential covariance.
 %
 % This provides a GPML-compatible covariance function implementing the
 % isotropic squared exponential covariance. This can be used as a
@@ -9,7 +9,7 @@
 % hyperparameters. The syntax is:
 %
 %   dK2_didj = ...
-%      sqdexp_isotropic_covariance(hyperparameters, x, z, i, j);
+%      isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
@@ -22,9 +22,9 @@
 %
 % The hyperparameters are the same as for covSEiso.
 %
-% See also COVFUNCTIONS.
+% See also COVSEISO, COVFUNCTIONS.
 
-% Copyright (c) 2013--2014 Roman Garnett.
+% Copyright (c) 2014 Roman Garnett.
 
 function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 
