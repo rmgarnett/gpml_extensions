@@ -8,9 +8,13 @@
 % given as integers between 1 and n, which simply index the provided
 % matrix.
 %
+% Note that this function does not allow you to learn K; rather, K is
+% assumed to be absolutely fixed. Should you wish to learn K, see
+% instead discrete_covariance.m.
+%
 % There are no hyperparameters requried.
 %
-% See also FIXED_DISCRETE_MEAN, COVFUNCTIONS.
+% See also DISCRETE_COVARIANCE, FIXED_DISCRETE_MEAN, COVFUNCTIONS.
 
 % Copyright (c) 2012--2014 Roman Garnett.
 
