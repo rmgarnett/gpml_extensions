@@ -7,9 +7,13 @@
 % This implementation assumes that the training inputs are given as
 % integers between 1 and N, which simply index the provided vector.
 %
+% Note that this function does not allow you to learn mu; rather, mu
+% is assumed to be absolutely fixed. Should you wish to learn mu, see
+% instead discrete_mean.m.
+%
 % There are no hyperparameters requried.
 %
-% See also FIXED_DISCRETE_COVARIANCE, MEANFUNCTIONS.
+% See also DISCRETE_MEAN, FIXED_DISCRETE_COVARIANCE, MEANFUNCTIONS.
 
 % Copyright (c) 2012--2014 Roman Garnett.
 
