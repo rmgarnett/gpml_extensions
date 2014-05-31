@@ -1,4 +1,4 @@
-% SQDEXP_ARD_COVARIANCE squared exponential covariance with ARD.
+% ARD_SQDEXP_COVARIANCE squared exponential covariance with ARD.
 %
 % This provides a GPML-compatible covariance function implementing the
 % squared exponential covariance with automatic relevance
@@ -10,7 +10,7 @@
 % hyperparameters. The syntax is:
 %
 %   dK2_didj = ...
-%      sqdexp_ard_covariance(hyperparameters, x, z, i, j);
+%      ard_sqdexp_covariance(hyperparameters, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
@@ -45,20 +45,20 @@ function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = sqdexp_ard_covariance(hyperparameters, x, z, j, i);
+      result = ard_sqdexp_covariance(hyperparameters, x, z, j, i);
       return;
     end
 
     % Hessians involving the log output scale
     if (j == numel(hyperparameters))
-      result = 2 * sqdexp_ard_covariance(hyperparameters, x, z, i);
+      result = 2 * ard_sqdexp_covariance(hyperparameters, x, z, i);
       return;
     end
 
     % precompute and store K for repeated reuse when the first
     % Hessian is requested
     if ((i == 1) && (j == 1))
-      K = sqdexp_ard_covariance(hyperparameters, x, z);
+      K = ard_sqdexp_covariance(hyperparameters, x, z);
     end
 
     % avoid silly if (isempty(z)) checks later
