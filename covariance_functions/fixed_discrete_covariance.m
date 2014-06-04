@@ -36,8 +36,7 @@ function result = fixed_discrete_covariance(K, ~, train_ind, test_ind, i, ~)
 
   % diagonal training variance
   elseif ((nargin == 4) && strcmp(test_ind, 'diag'))
-    diagonal = diag(K);
-    result = diagonal(train_ind);
+    result = K(sub2ind(size(K), train_ind, train_ind));
 
   % test covariance
   elseif (nargin == 4)
