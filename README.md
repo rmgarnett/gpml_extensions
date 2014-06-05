@@ -86,13 +86,11 @@ GPML model:
 	hyperparameters.cov  = log([length_scale; output_scale]);
 	hyperparameters.lik  = log(noise_std);
 
-    % add standard normal priors to each hyperparameter
+    % add normal priors to each hyperparameter
     priors.mean = {get_prior(@gaussian_prior, 0, 1)};
-    priors.cov  = ...
-        {get_prior(@gaussian_prior, 0, 1), ...
-         get_prior(@gaussian_prior, 0, 1};
-
-    priors.lik  = {get_prior(@gaussian_prior, 0, 1};
+    priors.cov  = {get_prior(@gaussian_prior, 0, 1), ...
+                   get_prior(@gaussian_prior, 0, 1};
+    priors.lik  = {get_prior(@gaussian_prior, log(0.01), 1};
 
     prior = get_prior(@independent_prior, priors);
     inference_method = add_prior_to_inference_method(inference_method, prior);
