@@ -2,15 +2,19 @@ GPML Extensions
 ===============
 
 This repository contains a collection of extensions to the popular
-GPML toolbox for Gaussian process inference in `MATLAB`, providing
-code for:
+GPML toolbox for Gaussian process inference in `MATLAB`, available
+here:
 
-* Incorporating aribitrary hyperparameter priors ![p(\theta)][1] into
+http://www.gaussianprocess.org/gpml/code/matlab/doc/
+
+We provide code for:
+
+* Incorporating arbitrary hyperparameter priors ![p(\theta)][1] into
   any inference method, allowing for MAP rather than MLE inference
   during hyperparameter learning.
 * An extended API for mean and covariance functions for computing
   Hessians with respect to their hyperparameters.
-* An extneded API for inference methods to compute the (potentially
+* An extended API for inference methods to compute the (potentially
   approximate) Hessian of the negative log likelihood/posterior with
   respect to hyperparameters.
 * Implementations of several new mean and covariance functions.
@@ -24,11 +28,11 @@ Hyperparameter Priors
 We establish a new, simple API for specifying arbitrary hyperparameter
 priors ![p(\theta)][1]. The API is:
 
-    [nlZ, dnlZ, HnlZ] = prior(theta)
+    [nlZ, dnlZ, HnlZ] = prior(hyperparameters)
 
 Where the input is:
 
-* `theta`: a GPML hyperparameter struct specifying ![\theta][2]
+* `hyperparameters`: a GPML hyperparameter struct specifying ![\theta][2]
 
 and the outputs are
 
@@ -38,7 +42,7 @@ and the outputs are
   evaluated at ![\theta][2],
   ![\nabla -\log p(\theta)][4]
 * `HnlZ`: (optional) a struct containing the Hessian of the negative
-  log prior evalauted at ![\theta][2],
+  log prior evaluated at ![\theta][2],
   ![H( -\log p(\theta) )][5]
 
 The `dnlZ` struct is specified in the same way as is typical for GPML
@@ -47,7 +51,7 @@ if needed, the Hessian is specified as described in the section on
 Hessians below.
 
 We provide an implementation of a flexible family of such priors in
-`indpendent_prior.m`. This implements a meta-prior of the form
+`independent_prior.m`. This implements a meta-prior of the form
 
 ![p(\theta) = \prod_i p(\theta_i)][6]
 
@@ -69,7 +73,7 @@ gradient `dnlZ`, and, optionally, its Hessian `HnlZ`, are replaced
 with the equivalent expressions for the negative (unnormalized) log
 posterior ![-\log p(y | x, D, \theta) - \log p(\theta)][12].
 
-Here is a demonstaration of incorporating a hyperparameter prior to a
+Here is a demonstration of incorporating a hyperparameter prior to a
 GPML model:
 
     inference_method    = @infExact;
@@ -100,6 +104,64 @@ GPML model:
     map_hyperparameters = minimize(hyperparameters, @gp, 50, inference_method, ...
             mean_function, covariance_function, [], x, y);
 
+Hessians
+--------
+
+We establish a simple extension to the GPML API for mean and
+covariance functions, allowing us to compute their Hessians with
+respect to their hyperparameters.
+
+To compute the second (mixed) partial derivative of ![\mu(x)][13] with
+respect to the pair ![(\theta_i, \theta_j)][14],
+
+![\partial^2 / \partial \theta_i \partial \theta_j \mu(x)][15]
+
+the interface is:
+
+    mu = mean_function(hyperparameters, x, i, j)
+
+which differs from the interface for computing gradients only by the
+additional input argument `j`. Several mean function implementations
+compliant with this extended interface are provided:
+
+* `zero_mean`: a drop-in replacement for `meanZero`
+* `constant_mean`: a drop-in replacement for `meanConst`
+* `linear_mean`: a drop-in replacement for `meanLinear`
+
+Similarly, to compute the second (mixed) partial derivative of
+![K(x, z)][16] with respect to the pair ![(\theta_i, \theta_j)][14],
+
+![\partial^2 / \partial \theta_i \partial \theta_j K(x, z][17]
+
+the interface is:
+
+    K = covariance_function(hyperparameters, x, z, i, j)
+
+Several covariance function implementations compliant with this
+extended interface are provided:
+
+* `isotropic_sqdexp_covariance`: a drop-in replacement for `covSEiso`
+* `ard_sqdexp_covariance`: a drop-in replacement for `covSEard`
+* `factor_sqdexp_covariance`: an implementation of a squared
+  exponential "factor" covariance, where an isotropic squared
+  exponential is applied to data after a linear map to a
+  lower-dimensional space.
+
+These Hessians can ultimately be used to compute the Hessian of the
+log likelihood with respect to the hyperparameters. In particular, we
+provide `exact_inference`, a drop-in replacement for `infExact`, which
+supports the extended inference method API
+
+    [posterior, nlZ, dnlZ, HnlZ] = ...
+        exact_inference(hyperparameters, mean_function, ...
+                        covariance_function, likelihood, x, y);
+
+The last output, `HnlZ`, is a struct describing the Hessian of the
+negative log likelihood with respect to ![\theta][2], including with
+respect to "off-block-diagonal" terms such as mean/covariance,
+mean/noise, and covariance/noise hyperparameter pairs. See
+`hessians.m` for a description of this struct.
+
 [1]: http://latex.codecogs.com/svg.latex?p(%5Ctheta)
 [2]: http://latex.codecogs.com/svg.latex?%5Ctheta
 [3]: http://latex.codecogs.com/svg.latex?-%5Clog%20p(%5Ctheta)
@@ -112,3 +174,8 @@ GPML model:
 [10]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i%20%5Cmid%20%5Cmu%2C%20b)%20%3D%20%5Ctext%7BLaplace%7D(%5Cmu%2C%20b)
 [11]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i)%20%3D%201
 [12]: http://latex.codecogs.com/svg.latex?-%5Clog%20p(y%20%5Cmid%20X%2C%20%5Cmathcal%7BD%7D%2C%20%5Ctheta)%20-%20%5Clog%20p(%5Ctheta)
+[13]: http://latex.codecogs.com/svg.latex?%5Cmu(x)
+[14]: http://latex.codecogs.com/svg.latex?(%5Ctheta_i%2C%20%5Ctheta_j)
+[15]: http://latex.codecogs.com/svg.latex?%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20%5Ctheta_i%20%5Cpartial%20%5Ctheta_j%7D%20%5Cmu(x)
+[16]: http://latex.codecogs.com/svg.latex?K(x%2C%20z)
+[17]: http://latex.codecogs.com/svg.latex?%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20%5Ctheta_i%20%5Cpartial%20%5Ctheta_j%7D%20K(x%2C%20z)
