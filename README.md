@@ -92,17 +92,13 @@ GPML model:
                    get_prior(@gaussian_prior, 0, 1};
     priors.lik  = {get_prior(@gaussian_prior, log(0.01), 1};
 
+    % add prior to inference method
     prior = get_prior(@independent_prior, priors);
     inference_method = add_prior_to_inference_method(inference_method, prior);
 
     % find MAP hyperparameters
     map_hyperparameters = minimize(hyperparameters, @gp, 50, inference_method, ...
             mean_function, covariance_function, [], x, y);
-
-    % get predictions from GP conditioned on MAP hyperparameters
-    [~, ~, f_star_mean, f_star_variance, log_probabilities] = ...
-        gp(map_hyperparameters, inference_method, mean_function, ...
-           covariance_function, [], x, y, x_star, y_star);
 
 [1]: http://latex.codecogs.com/svg.latex?p(%5Ctheta)
 [2]: http://latex.codecogs.com/svg.latex?%5Ctheta
