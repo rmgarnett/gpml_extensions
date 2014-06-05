@@ -216,3 +216,4 @@ functionality. These include:
 [19]: http://latex.codecogs.com/svg.latex?p(f)%20%3D%20%5Cmathcal%7BGP%7D(f%3B%20%5Cmu%2C%20K)
 [20]: http://latex.codecogs.com/svg.latex?a(x)
 [21]: http://latex.codecogs.com/svg.latex?K(x%2C%20x%27)
+[22]: http://latex.codecogs.com/svg.latex?(x%5E%5Cast%2C%20y%5E%5Cast)
