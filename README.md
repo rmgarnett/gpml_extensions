@@ -162,6 +162,39 @@ respect to "off-block-diagonal" terms such as mean/covariance,
 mean/noise, and covariance/noise hyperparameter pairs. See
 `hessians.m` for a description of this struct.
 
+Other
+-----
+
+A number of additional files are included, providing additional
+functionality. These include:
+
+* New mean functions:
+    * `step_mean`: a simple "step" changepoint mean
+	* `discrete_mean`/`fixed_discrete_mean`: free-form mean vectors
+      for discrete data; `discrete_mean` treats the entries of this
+      vector as hyperparameters, enabling learning.
+* New covariance functions:
+    * `discrete_covariance`/`fixed_discrete_covariance`: free-form
+      covariance matrices for discrete data; `discrete_covariance`
+      treats the entries of this matrix as hyperparameters, enabling
+      learning. A log-Cholesky parameterization is used, allowing for
+      unconstrained optimization.
+	* `scaled_covariance`: a meta-covariance for modeling functions of
+      the form ![a(x)f(x)][18], where ![p(f) = GP(\mu, K)][19] and
+      ![a(x)][20] is a fixed function. ![a(x)][20] is specified as a
+      GPML mean function, and ![K(x, x')][21] is specified as a GPML
+      covariance function. `scaled_covariance` computes the gradient
+      of the covariance with respect to both the parameters of
+      ![a(x)][20] and ![K(x, x'][21].
+* Rank-one updates of GPML posterior structs: `update_posterior`
+  allows the user to update an existing GPML posterior struct (for
+  regression with Gaussian observation noise) given a single new
+  observation ![(x*, y*)][22]. This can significantly decrease the
+  total time needed to perform sequential online GP regression.
+* Computing likelihoods assuming datasets are from independent draws
+  from a joint GP prior: see `gp_likelihood_independent` for more
+  information.
+
 [1]: http://latex.codecogs.com/svg.latex?p(%5Ctheta)
 [2]: http://latex.codecogs.com/svg.latex?%5Ctheta
 [3]: http://latex.codecogs.com/svg.latex?-%5Clog%20p(%5Ctheta)
@@ -179,3 +212,7 @@ mean/noise, and covariance/noise hyperparameter pairs. See
 [15]: http://latex.codecogs.com/svg.latex?%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20%5Ctheta_i%20%5Cpartial%20%5Ctheta_j%7D%20%5Cmu(x)
 [16]: http://latex.codecogs.com/svg.latex?K(x%2C%20z)
 [17]: http://latex.codecogs.com/svg.latex?%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20%5Ctheta_i%20%5Cpartial%20%5Ctheta_j%7D%20K(x%2C%20z)
+[18]: http://latex.codecogs.com/svg.latex?a(x)f(x)
+[19]: http://latex.codecogs.com/svg.latex?p(f)%20%3D%20%5Cmathcal%7BGP%7D(f%3B%20%5Cmu%2C%20K)
+[20]: http://latex.codecogs.com/svg.latex?a(x)
+[21]: http://latex.codecogs.com/svg.latex?K(x%2C%20x%27)
