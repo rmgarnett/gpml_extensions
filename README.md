@@ -202,7 +202,7 @@ functionality. These include:
 [5]: http://latex.codecogs.com/svg.latex?H%5Cbigl(-%5Clog%20p(%5Ctheta)%20%5Cbigr)
 [6]: http://latex.codecogs.com/svg.latex?p(%5Ctheta)%20%3D%20%5Cprod_i%20p(%5Ctheta_i)
 [7]: http://latex.codecogs.com/svg.latex?%5Ctheta_i
-[8]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i%20%5Cmid%20%5Cmu%2C%20%5Csigma%5E2)%20%3D%20%5Cmathcal%7BN%7D(%5Ctheta_i%3B%20%5Cmu%2C%20sigma%5E2)%20
+[8]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i%20%5Cmid%20%5Cmu%2C%20%5Csigma%5E2)%20%3D%20%5Cmathcal%7BN%7D(%5Ctheta_i%3B%20%5Cmu%2C%20%5Csigma%5E2)%20
 [9]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i%20%5Cmid%20%5Cell%2C%20u)%20%3D%20%5Cmathcal%7BU%7D(%5Cell%2C%20u)
 [10]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i%20%5Cmid%20%5Cmu%2C%20b)%20%3D%20%5Ctext%7BLaplace%7D(%5Cmu%2C%20b)
 [11]: http://latex.codecogs.com/svg.latex?p(%5Ctheta_i)%20%3D%201
