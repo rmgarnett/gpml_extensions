@@ -23,8 +23,8 @@
 %     nlZ: the negative log prior evaluated at the hyperparameters
 %    dnlZ: the gradient of the negative log prior evaluated at the
 %          hyperparameters
-%    HnlZ: the a struct containing the Hessian of the negative log
-%          prior evaluated at theta (see hessians.m)
+%    HnlZ: a struct containing the Hessian of the negative log prior
+%          evaluated at theta (see hessians.m)
 %
 % Usage (sample mode)
 % -------------------
