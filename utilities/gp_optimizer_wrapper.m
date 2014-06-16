@@ -56,9 +56,7 @@
 %         covariance_function: a GPML covariance function
 %                  likelihood: a GPML likelihood
 %                           x: training observation locations (N x D)
-%                           y: training observation values (N x 1) or
-%                              associated GPML posterior struct
-%                              (latter strongly encouraged)
+%                           y: training observation values (N x 1)
 %
 % Outputs:
 %
