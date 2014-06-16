@@ -1,4 +1,4 @@
-% GP_OPTIMIZER_WRAPPER standard interface for minimizing log likelihood.
+% GP_OPTIMIZER_WRAPPER standard interface for optimizing log likelihood.
 %
 % This is a trivial wrapper that, given a GP prior on a function f:
 %
