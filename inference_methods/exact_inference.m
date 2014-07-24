@@ -36,8 +36,9 @@
 
 % Copyright (c) 2013--2014 Roman Garnett.
 
-function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
-          mean_function, covariance_function, ~, x, y)
+function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
+      exact_inference(hyperparameters, mean_function, covariance_function, ...
+                      ~, x, y)
 
   % If Hessian is not requested, simply call infExact and
   % return. This allows us to assume the Hessian is needed for the
@@ -66,7 +67,7 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   n = size(x, 1);
   I = eye(n);
 
-  % initialize gradient and Hessian
+  % initialize output
   dnlZ = hyperparameters;
 
   num_cov  = numel(hyperparameters.cov);
@@ -77,6 +78,18 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
   HnlZ.covariance_ind = 1:num_cov;
   HnlZ.likelihood_ind = (num_cov + 1);
   HnlZ.mean_ind       = (num_cov + 2):num_hyperparameters;
+
+  if (nargin >= 4)
+    dalpha.cov  = zeros(n, num_cov);
+    dalpha.lik  = zeros(n, 1);
+    dalpha.mean = zeros(n, num_mean);
+  end
+
+  if (nargin >= 5)
+    dWinv.cov  = zeros(n, num_cov);
+    dWinv.lik  = zeros(n, 1);
+    dWinv.mean = zeros(n, num_mean);
+  end
 
   % convenience handles
   mu = @(varargin) feval(mean_function{:},       hyperparameters.mean, varargin{:});
@@ -166,6 +179,16 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
       (2 * alpha' * V_inv_alpha - product_trace(V_inv, V_inv)) + ...
       2 * dnlZ.lik;
 
+  % derivative of alhpa with respect to log noise scale
+  if (nargout >= 4)
+    dalpha.lik = -2 * noise_variance * V_inv_alpha;
+  end
+
+  % derivative of diag W^{-1} with respect to log noise scale
+  if (nargout >= 5)
+    dWinv.lik = 2 * noise_variance * ones(n, 1);
+  end
+
   % store derivatives of m with respect to mean hyperparameters for reuse
   dm = zeros(n, num_mean);
 
@@ -176,18 +199,26 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
     % gradient with respect to this mean parameter
     dnlZ.mean(i) = -dm(:, i)' * alpha;
 
+    V_inv_dm = V_inv_times(dm(:, i));
+
     % mean/mean Hessian entries
     for j = 1:i
       d2m_didj = mu(x, i, j);
 
       HnlZ.H(HnlZ.mean_ind(i), HnlZ.mean_ind(j)) = ...
-          dm(:, i)' * V_inv_times(dm(:, j)) + ...
+          V_inv_dm' * dm(:, j) + ...
           d2m_didj' * alpha;
     end
 
     % mean/noise Hessian entry
     HnlZ.H(HnlZ.mean_ind(i), HnlZ.likelihood_ind) = ...
         2 * noise_variance * dm(:, i)' * V_inv_alpha;
+
+    % derivitive of alpha with respect to this mean parameter
+    if (nargout >= 4)
+      dalpha.mean(:, i) = -V_inv_dm;
+    end
+
   end
 
   % compute and store V^{-1} K'_i for Hessian computations
@@ -224,6 +255,12 @@ function [posterior, nlZ, dnlZ, HnlZ] = exact_inference(hyperparameters, ...
     HnlZ.H(HnlZ.likelihood_ind, HnlZ.covariance_ind(i)) = ...
         noise_variance * (2 * y' * V_inv_dK(:, :, i) * V_inv_alpha -...
                           product_trace(V_inv_dK(:, :, i), V_inv));
+
+    % derivative of alpha with respect to this covariance parameter
+    if (nargout >= 4)
+      dalpha.cov(:, i) = -V_inv_dK(:, :, i) * posterior.alpha;
+    end
+
   end
 
   % symmetrize Hessian
