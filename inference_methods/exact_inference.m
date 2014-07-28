@@ -40,9 +40,9 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
       exact_inference(hyperparameters, mean_function, covariance_function, ...
                       ~, x, y)
 
-  % If Hessian is not requested, simply call infExact and
-  % return. This allows us to assume the Hessian is needed for the
-  % remainder of the code, making it more readible.
+  % If Hessian is not requested, simply call infExact and return. This
+  % allows us to assume the Hessian is needed for the remainder of the
+  % code, making it more readible.
 
   if (nargout <= 1)
     posterior = ...
