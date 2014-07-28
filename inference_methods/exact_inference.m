@@ -79,13 +79,13 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   HnlZ.likelihood_ind = (num_cov + 1);
   HnlZ.mean_ind       = (num_cov + 2):num_hyperparameters;
 
-  if (nargin >= 4)
+  if (nargout >= 4)
     dalpha.cov  = zeros(n, num_cov);
     dalpha.lik  = zeros(n, 1);
     dalpha.mean = zeros(n, num_mean);
   end
 
-  if (nargin >= 5)
+  if (nargout >= 5)
     dWinv.cov  = zeros(n, num_cov);
     dWinv.lik  = zeros(n, 1);
     dWinv.mean = zeros(n, num_mean);
