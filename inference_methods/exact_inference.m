@@ -61,8 +61,8 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     return;
   end
 
-  % skipping error checks on likelihood, assuming likGauss no
-  % matter what the user says
+  % skipping error checks on likelihood, assuming likGauss no matter
+  % what the user says
 
   n = size(x, 1);
   I = eye(n);
@@ -136,6 +136,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     V_inv_times = @(x) solve_chol(L, x) * factor;
 
   else
+
     % handle small noise specially to avoid numerical problems (GPML 3.4)
     if (high_noise)
       % high-noise parameterization: posterior.L contains chol(K / sigma^2 + I)
@@ -144,7 +145,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
       L = chol(K() * factor + I);
       posterior.L = L;
     else
-      % low-noise parameterization: posterior.L contains -inv(K + \sigma^2 I)
+      % low-noise parameterization: posterior.L contains -(K + \sigma^2 I)^{-1}
 
       factor = 1;
       L = chol(K() + diag(noise_variance + zeros(n, 1)));
@@ -184,7 +185,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
       (2 * alpha' * V_inv_alpha - product_trace(V_inv, V_inv)) + ...
       2 * dnlZ.lik;
 
-  % derivative of alhpa with respect to log noise scale
+  % derivative of alpha with respect to log noise scale
   if (nargout >= 4)
     dalpha.lik = -2 * noise_variance * V_inv_alpha;
   end
@@ -194,14 +195,14 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     dWinv.lik = 2 * noise_variance * ones(n, 1);
   end
 
-  % store derivatives of m with respect to mean hyperparameters for reuse
+  % store derivatives of mu with respect to mean parameters for reuse
   dm = zeros(n, num_mean);
 
   % handle gradient/Hessian entries with respect to mean hyperparameters
   for i = 1:num_mean
     dm(:, i) = mu(i);
 
-    % gradient with respect to this mean parameter
+    % derivative of nlZ with respect to this mean parameter
     dnlZ.mean(i) = -dm(:, i)' * alpha;
 
     V_inv_dm = V_inv_times(dm(:, i));
@@ -236,7 +237,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
     V_inv_dK(:, :, i) = V_inv_times(dK);
 
-    % gradient with respect to this covariance parameter
+    % derivative of nlZ with respect to this covariance parameter
     dnlZ.cov(i) = 0.5 * (trace(V_inv_dK(:, :, i)) - alpha' * dK * alpha);
 
     % covariance/covariance Hessian entries
@@ -258,7 +259,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
     % covariance/noise Hessian entry
     HnlZ.H(HnlZ.likelihood_ind, HnlZ.covariance_ind(i)) = ...
-        noise_variance * (2 * y' * V_inv_dK(:, :, i) * V_inv_alpha -...
+        noise_variance * (2 * y' * V_inv_dK(:, :, i) * V_inv_alpha - ...
                           product_trace(V_inv_dK(:, :, i), V_inv));
 
     % derivative of alpha with respect to this covariance parameter
