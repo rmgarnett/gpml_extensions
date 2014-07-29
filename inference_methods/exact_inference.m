@@ -92,8 +92,10 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   end
 
   % convenience handles
-  mu = @(varargin) feval(mean_function{:},       hyperparameters.mean, varargin{:});
-  K  = @(varargin) feval(covariance_function{:}, hyperparameters.cov,  varargin{:});
+  mu = @(varargin) feval(mean_function{:},       hyperparameters.mean, ...
+                         x, varargin{:});
+  K  = @(varargin) feval(covariance_function{:}, hyperparameters.cov,  ...
+                         x, [], varargin{:});
 
   % computes tr(AB) for symmetric A, B
   product_trace = @(A, B) (A(:)' * B(:));
@@ -112,7 +114,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     alpha = posterior.alpha;
 
     % derive y from posterior.alpha
-    V = K(x) + diag(noise_variance + zeros(n, 1));
+    V = K() + diag(noise_variance + zeros(n, 1));
     y = V * posterior.alpha;
 
     if (is_chol(posterior.L))
@@ -136,19 +138,19 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
       % high-noise parameterization: posterior.L contains chol(K / sigma^2 + I)
 
       factor = (1 / noise_variance);
-      L = chol(K(x) * factor + I);
+      L = chol(K() * factor + I);
       posterior.L = L;
     else
       % low-noise parameterization: posterior.L contains -inv(K + \sigma^2 I)
 
       factor = 1;
-      L = chol(K(x) + diag(noise_variance + zeros(n, 1)));
+      L = chol(K() + diag(noise_variance + zeros(n, 1)));
       posterior.L = -solve_chol(L, I);
     end
 
     V_inv_times = @(x) solve_chol(L, x) * factor;
 
-    y = y - mu(x);
+    y = y - mu();
     alpha = V_inv_times(y);
 
     posterior.alpha = alpha;
@@ -194,7 +196,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
   % handle gradient/Hessian entries with respect to mean hyperparameters
   for i = 1:num_mean
-    dm(:, i) = mu(x, i);
+    dm(:, i) = mu(i);
 
     % gradient with respect to this mean parameter
     dnlZ.mean(i) = -dm(:, i)' * alpha;
@@ -203,7 +205,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
     % mean/mean Hessian entries
     for j = 1:i
-      d2m_didj = mu(x, i, j);
+      d2m_didj = mu(i, j);
 
       HnlZ.H(HnlZ.mean_ind(i), HnlZ.mean_ind(j)) = ...
           V_inv_dm' * dm(:, j) - ...
@@ -227,7 +229,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   % handle gradient/Hessian entries with respect tocovariance
   % hyperparameters
   for i = 1:num_cov
-    dK = K(x, [], i);
+    dK = K(i);
 
     V_inv_dK(:, :, i) = V_inv_times(dK);
 
@@ -236,7 +238,7 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
     % covariance/covariance Hessian entries
     for j = 1:i
-      HK = K(x, [], i, j);
+      HK = K(i, j);
 
       HnlZ.H(HnlZ.covariance_ind(i), HnlZ.covariance_ind(j)) = ...
           y' * V_inv_dK(:, :, i) * V_inv_dK(:, :, j) * alpha + ...
