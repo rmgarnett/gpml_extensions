@@ -103,6 +103,9 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   % computes tr(AB)
   product_trace = @(A, B) (vectorize(A')' * B(:));
 
+  % indices of the diagonal entries of an (n x n) matrix
+  diag_ind = (1:(n + 1):(n * n))';
+
   noise_variance = exp(2 * hyperparameters.lik);
   high_noise = (noise_variance >= 1e-6);
 
@@ -117,7 +120,8 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     alpha = posterior.alpha;
 
     % derive y from posterior.alpha
-    V = K() + diag(noise_variance + zeros(n, 1));
+    V = K();
+    V(diag_ind) = V(diag_ind) + noise_variance;
     y = V * posterior.alpha;
 
     if (is_chol(posterior.L))
@@ -142,13 +146,21 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
       % high-noise parameterization: posterior.L contains chol(K / sigma^2 + I)
 
       factor = (1 / noise_variance);
-      L = chol(K() * factor + I);
+
+      V = K() * factor;
+      V(diag_ind) = V(diag_ind) + 1;
+
+      L = chol(V);
       posterior.L = L;
     else
       % low-noise parameterization: posterior.L contains -(K + \sigma^2 I)^{-1}
 
       factor = 1;
-      L = chol(K() + diag(noise_variance + zeros(n, 1)));
+
+      V = K();
+      V(diag_ind) = V(diag_ind) + noise_variance;
+
+      L = chol(V);
       posterior.L = -solve_chol(L, I);
     end
 
