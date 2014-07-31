@@ -1,3 +1,6 @@
+% The below was an internal function in GPML's infLaplace, which we
+% reuse unmodified for laplace_inference.
+
 % Compute the log determinant ldA and the inverse iA of a square nxn matrix
 % A = eye(n) + K*diag(w) from its LU decomposition; for negative definite A, we
 % return ldA = Inf. We also return mwiA = -diag(w)/A.

@@ -1,3 +1,6 @@
+% The below was an internal function in GPML's infLaplace, which we
+% reuse unmodified for laplace_inference.
+
 % Run IRLS Newton algorithm to optimise Psi(alpha).
 function alpha = irls_gpml(alpha, m,K,likfun, opt)
   if isfield(opt,'irls_maxit'), maxit = opt.irls_maxit; % max no of Newton steps
