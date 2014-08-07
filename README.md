@@ -163,7 +163,7 @@ Both support the extended inference method API
 The last output, `HnlZ`, is a struct describing the Hessian of the
 negative log likelihood with respect to ![\theta][2], including with
 respect to "off-block-diagonal" terms such as mean/covariance,
-mean/noise, and covariance/noise hyperparameter pairs. See
+mean/likelihood, and covariance/likelihood hyperparameter pairs. See
 `hessians.m` for a description of this struct.
 
 Other
