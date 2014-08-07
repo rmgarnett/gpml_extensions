@@ -149,11 +149,15 @@ extended interface are provided:
 
 These Hessians can ultimately be used to compute the Hessian of the
 log likelihood with respect to the hyperparameters. In particular, we
-provide `exact_inference`, a drop-in replacement for `infExact`, which
-supports the extended inference method API
+provide:
+
+* `exact_inference`: a drop-in replacement for `infExact`
+* `laplace_inference`: a drop-in replacement for `infLaplace`.
+
+Both support the extended inference method API
 
     [posterior, nlZ, dnlZ, HnlZ] = ...
-        exact_inference(hyperparameters, mean_function, ...
+        inference_meand(hyperparameters, mean_function, ...
                         covariance_function, likelihood, x, y);
 
 The last output, `HnlZ`, is a struct describing the Hessian of the
