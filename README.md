@@ -157,8 +157,8 @@ provide:
 Both support the extended inference method API
 
     [posterior, nlZ, dnlZ, HnlZ] = ...
-        inference_meand(hyperparameters, mean_function, ...
-                        covariance_function, likelihood, x, y);
+        inference_method(hyperparameters, mean_function, ...
+                         covariance_function, likelihood, x, y);
 
 The last output, `HnlZ`, is a struct describing the Hessian of the
 negative log likelihood with respect to ![\theta][2], including with
