@@ -60,9 +60,10 @@ function [posterior, nlZ, dnlZ, HnlZ] = ...
   % and dWinv
 
   % set flag for calculating Hessian
-  calc_hessian = 1;
   if nargout < 4
     calc_hessian = 0;
+  else
+    calc_hessian = 1;
   end
 
   % skipping error checks on likelihood, assuming likGauss no matter
