@@ -36,13 +36,13 @@
 
 % Copyright (c) 2013--2014 Roman Garnett.
 
-function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
+function [posterior, nlZ, dnlZ, HnlZ] = ...
       exact_inference(hyperparameters, mean_function, covariance_function, ...
                       ~, x, y)
 
-  % If Hessian is not requested, simply call infExact and return. This
-  % allows us to assume the Hessian is needed for the remainder of the
-  % code, making it more readible.
+  % Unless explicity requested, skip computation of the Hessian of the 
+  % posterior wrt the hyperparameters.  Assume that the use requested
+  % dalpha and dWinv regardless, and attach to the posterior struct
 
   if (nargout <= 1)
     posterior = ...
@@ -54,11 +54,15 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
         infExact(hyperparameters, mean_function, covariance_function, ...
                  'likGauss', x, y);
     return;
-  elseif (nargout == 3)
-    [posterior, nlZ, dnlZ] = ...
-        infExact(hyperparameters, mean_function, covariance_function, ...
-                 'likGauss', x, y);
-    return;
+  end
+
+  % If 3 or more outputs are requested, assume we are calculating dalpha
+  % and dWinv
+
+  % set flag for calculating Hessian
+  calc_hessian = 1;
+  if nargout < 4
+    calc_hessian = 0;
   end
 
   % skipping error checks on likelihood, assuming likGauss no matter
@@ -74,21 +78,20 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   num_mean = numel(hyperparameters.mean);
   num_hyperparameters = 1 + num_cov + num_mean;
 
-  HnlZ.H              = zeros(num_hyperparameters);
-  HnlZ.covariance_ind = 1:num_cov;
-  HnlZ.likelihood_ind = (num_cov + 1);
-  HnlZ.mean_ind       = (num_cov + 2):num_hyperparameters;
+  dalpha.cov  = zeros(n, num_cov);
+  dalpha.lik  = zeros(n, 1);
+  dalpha.mean = zeros(n, num_mean);
 
-  if (nargout >= 4)
-    dalpha.cov  = zeros(n, num_cov);
-    dalpha.lik  = zeros(n, 1);
-    dalpha.mean = zeros(n, num_mean);
-  end
+  dWinv.cov  = zeros(n, num_cov);
+  dWinv.lik  = zeros(n, 1);
+  dWinv.mean = zeros(n, num_mean);
 
-  if (nargout >= 5)
-    dWinv.cov  = zeros(n, num_cov);
-    dWinv.lik  = zeros(n, 1);
-    dWinv.mean = zeros(n, num_mean);
+  % initialize Hessian struct
+  if (calc_hessian)
+    HnlZ.H              = zeros(num_hyperparameters);
+    HnlZ.covariance_ind = 1:num_cov;
+    HnlZ.likelihood_ind = (num_cov + 1);
+    HnlZ.mean_ind       = (num_cov + 2):num_hyperparameters;
   end
 
   % convenience handles
@@ -191,21 +194,19 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   % derivative with respect to log noise scale
   dnlZ.lik = noise_variance * (trace(V_inv) - alpha' * alpha);
 
-  % second derivative with respect to log noise scale
-  HnlZ.H(HnlZ.likelihood_ind, HnlZ.likelihood_ind) = ...
-      2 * noise_variance^2 * ...
-      (2 * alpha' * V_inv_alpha - product_trace(V_inv, V_inv)) + ...
-      2 * dnlZ.lik;
+  if (calc_hessian)
+    % second derivative with respect to log noise scale
+    HnlZ.H(HnlZ.likelihood_ind, HnlZ.likelihood_ind) = ...
+        2 * noise_variance^2 * ...
+        (2 * alpha' * V_inv_alpha - product_trace(V_inv, V_inv)) + ...
+        2 * dnlZ.lik;
+  end
 
   % derivative of alpha with respect to log noise scale
-  if (nargout >= 4)
-    dalpha.lik = -2 * noise_variance * V_inv_alpha;
-  end
+  dalpha.lik = -2 * noise_variance * V_inv_alpha;
 
   % derivative of diag W^{-1} with respect to log noise scale
-  if (nargout >= 5)
-    dWinv.lik = 2 * noise_variance * ones(n, 1);
-  end
+  dWinv.lik = 2 * noise_variance * ones(n, 1);
 
   % store derivatives of mu with respect to mean parameters for reuse
   dm = zeros(n, num_mean);
@@ -219,30 +220,31 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
     V_inv_dm = V_inv_times(dm(:, i));
 
-    % mean/mean Hessian entries
-    for j = 1:i
-      d2m_didj = mu(i, j);
+    % calculate parameters of the Hessian
+    if (calc_hessian)
+      % mean/mean Hessian entries
+      for j = 1:i
+        d2m_didj = mu(i, j);
 
-      HnlZ.H(HnlZ.mean_ind(i), HnlZ.mean_ind(j)) = ...
-          V_inv_dm' * dm(:, j) - ...
-          d2m_didj' * alpha;
+        HnlZ.H(HnlZ.mean_ind(i), HnlZ.mean_ind(j)) = ...
+            V_inv_dm' * dm(:, j) - ...
+            d2m_didj' * alpha;
+      end
+
+      % mean/noise Hessian entry
+      HnlZ.H(HnlZ.mean_ind(i), HnlZ.likelihood_ind) = ...
+          2 * noise_variance * dm(:, i)' * V_inv_alpha;
     end
-
-    % mean/noise Hessian entry
-    HnlZ.H(HnlZ.mean_ind(i), HnlZ.likelihood_ind) = ...
-        2 * noise_variance * dm(:, i)' * V_inv_alpha;
 
     % derivitive of alpha with respect to this mean parameter
-    if (nargout >= 4)
-      dalpha.mean(:, i) = -V_inv_dm;
-    end
+    dalpha.mean(:, i) = -V_inv_dm;
 
   end
 
   % compute and store V^{-1} K'_i for Hessian computations
   V_inv_dK = zeros(n, n, num_cov);
 
-  % handle gradient/Hessian entries with respect tocovariance
+  % handle gradient/Hessian entries with respect to covariance
   % hyperparameters
   for i = 1:num_cov
     dK = K(i);
@@ -252,36 +254,42 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     % derivative of nlZ with respect to this covariance parameter
     dnlZ.cov(i) = 0.5 * (trace(V_inv_dK(:, :, i)) - alpha' * dK * alpha);
 
-    % covariance/covariance Hessian entries
-    for j = 1:i
-      HK = K(i, j);
+    if (calc_hessian)
+      % covariance/covariance Hessian entries
+      for j = 1:i
+        HK = K(i, j);
 
-      HnlZ.H(HnlZ.covariance_ind(i), HnlZ.covariance_ind(j)) = ...
-          (y' * V_inv_dK(:, :, i)) * (V_inv_dK(:, :, j) * alpha) + ...
-          0.5 * (product_trace(V_inv, HK) - ...
-                 product_trace(V_inv_dK(:, :, i), V_inv_dK(:, :, j)) - ...
-                 alpha' * HK * alpha);
+        HnlZ.H(HnlZ.covariance_ind(i), HnlZ.covariance_ind(j)) = ...
+            (y' * V_inv_dK(:, :, i)) * (V_inv_dK(:, :, j) * alpha) + ...
+            0.5 * (product_trace(V_inv, HK) - ...
+                   product_trace(V_inv_dK(:, :, i), V_inv_dK(:, :, j)) - ...
+                   alpha' * HK * alpha);
+      end
+
+      % covariance/mean Hessian entries
+      for j = 1:num_mean
+        HnlZ.H(HnlZ.mean_ind(j), HnlZ.covariance_ind(i)) = ...
+            dm(:, j)' * V_inv_dK(:, :, i) * alpha;
+      end
+
+      % covariance/noise Hessian entry
+      HnlZ.H(HnlZ.likelihood_ind, HnlZ.covariance_ind(i)) = ...
+          noise_variance * (2 * y' * V_inv_dK(:, :, i) * V_inv_alpha - ...
+                           product_trace(V_inv_dK(:, :, i), V_inv));
     end
-
-    % covariance/mean Hessian entries
-    for j = 1:num_mean
-      HnlZ.H(HnlZ.mean_ind(j), HnlZ.covariance_ind(i)) = ...
-          dm(:, j)' * V_inv_dK(:, :, i) * alpha;
-    end
-
-    % covariance/noise Hessian entry
-    HnlZ.H(HnlZ.likelihood_ind, HnlZ.covariance_ind(i)) = ...
-        noise_variance * (2 * y' * V_inv_dK(:, :, i) * V_inv_alpha - ...
-                          product_trace(V_inv_dK(:, :, i), V_inv));
 
     % derivative of alpha with respect to this covariance parameter
-    if (nargout >= 4)
-      dalpha.cov(:, i) = -V_inv_dK(:, :, i) * posterior.alpha;
-    end
-
+    dalpha.cov(:, i) = -V_inv_dK(:, :, i) * posterior.alpha;
   end
 
+
   % symmetrize Hessian
-  HnlZ.H = HnlZ.H + tril(HnlZ.H, -1)';
+  if (calc_hessian)    
+    HnlZ.H = HnlZ.H + tril(HnlZ.H, -1)';
+  end
+
+  % store dalpha and dWinv as parts of the posterior struct
+  posterior.dalpha = dalpha;
+  posterior.dWinv = dWinv;
 
 end
