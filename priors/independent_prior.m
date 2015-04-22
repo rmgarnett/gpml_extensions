@@ -136,7 +136,7 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
       num_lik = 0;
     end
 
-    HnlZ.H = zeros(num_hyperparameters);
+    HnlZ.value = zeros(num_hyperparameters);
     HnlZ.covariance_ind = 1:num_cov;
     HnlZ.likelihood_ind = (num_cov + 1):(num_cov + num_lik);
     HnlZ.mean_ind       = (num_cov + num_lik + 1):num_hyperparameters;
@@ -162,7 +162,7 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
         [nlZ, dnlZ.(field)(j)] = ...
             priors.(field){j}(hyperparameters.(field)(j));
       else
-        [nlZ, dnlZ.(field)(j), HnlZ.H(offset + j, offset + j)] = ...
+        [nlZ, dnlZ.(field)(j), HnlZ.value(offset + j, offset + j)] = ...
             priors.(field){j}(hyperparameters.(field)(j));
       end
 
