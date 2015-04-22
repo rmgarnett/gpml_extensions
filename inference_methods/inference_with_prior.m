@@ -92,45 +92,52 @@
 
 % Copyright (c) 2014 Roman Garnett.
 
-function [posterior, nlZ, dnlZ, HnlZ, varargout] = ...
-      inference_with_prior(inference_method, prior, hyperparameters, ...
-                           mean_function, covariance_function, ...
-                           likelihood, x, y)
+function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
+      inference_with_prior(inference_method, prior, theta, mean_function, ...
+          covariance_function, likelihood, x, y)
 
-  % only posterior requested
   if (nargout <= 1)
     posterior = ...
-        inference_method(hyperparameters, mean_function, covariance_function, ...
+        inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
     return;
 
-  % posterior and nlZ requested
   elseif (nargout == 2)
     [posterior, nlZ] = ...
-        inference_method(hyperparameters, mean_function, covariance_function, ...
+        inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
-    nlZ = nlZ + prior(hyperparameters);
+    nlZ = nlZ + prior(theta);
     return;
 
-  % posterior, nlZ, and dnlZ requested
   elseif (nargout == 3)
-    [prior_nlZ, prior_dnlZ] = prior(hyperparameters);
+    [prior_nlZ, prior_dnlZ] = prior(theta);
     [posterior, nlZ, dnlZ] = ...
-        inference_method(hyperparameters, mean_function, covariance_function, ...
+        inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
 
-  % posterior, nlZ, dnlZ, and HnlZ requested
-  elseif (nargout >= 4)
-    [prior_nlZ, prior_dnlZ, prior_HnlZ] = prior(hyperparameters);
-    [posterior, nlZ, dnlZ, HnlZ, varargout{1:(nargout - 4)}] = ...
-        inference_method(hyperparameters, mean_function, covariance_function, ...
+  elseif (nargout == 4)
+    [prior_nlZ, prior_dnlZ] = prior(theta);
+    [posterior, nlZ, dnlZ, dalpha] = ...
+        inference_method(theta, mean_function, covariance_function, ...
+                         likelihood, x, y);
+
+  elseif (nargout == 5)
+    [prior_nlZ, prior_dnlZ] = prior(theta);
+    [posterior, nlZ, dnlZ, dalpha, dWinv] = ...
+        inference_method(theta, mean_function, covariance_function, ...
+                         likelihood, x, y);
+
+  elseif (nargout == 6)
+    [prior_nlZ, prior_dnlZ, prior_HnlZ] = prior(theta);
+    [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
+        inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
   end
 
   nlZ = nlZ + prior_nlZ;
 
   % merge gradient structs
-  fields = fieldnames(hyperparameters);
+  fields = fieldnames(theta);
   for i = 1:numel(fields)
     field = fields{i};
 
@@ -138,8 +145,8 @@ function [posterior, nlZ, dnlZ, HnlZ, varargout] = ...
   end
 
   % merge Hessian if required
-  if (nargout == 4)
-    HnlZ.H = HnlZ.H + prior_HnlZ.H;
+  if (nargout == 6)
+    HnlZ.value = HnlZ.value + prior_HnlZ.value;
   end
 
 end
