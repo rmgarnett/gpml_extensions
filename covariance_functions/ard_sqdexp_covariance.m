@@ -25,7 +25,7 @@
 %
 % See also COVFUNCTIONS.
 
-% Copyright (c) 2013--2014 Roman Garnett.
+% Copyright (c) 2013--2015 Roman Garnett.
 
 function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
 
@@ -41,6 +41,8 @@ function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
     result = covSEard(hyperparameters, x, z);
   elseif (nargin == 4)
     result = covSEard(hyperparameters, x, z, i);
+
+  % Hessian with respect to \theta_i \theta_j
   else
 
     % ensure i <= j by exploiting symmetry
@@ -51,17 +53,17 @@ function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
 
     % Hessians involving the log output scale
     if (j == numel(hyperparameters))
-      result = 2 * ard_sqdexp_covariance(hyperparameters, x, z, i);
+      result = 2 * covSEard(hyperparameters, x, z, i);
       return;
     end
 
     % precompute and store K for repeated reuse when the first
     % Hessian is requested
     if ((i == 1) && (j == 1))
-      K = ard_sqdexp_covariance(hyperparameters, x, z);
+      K = covSEard(hyperparameters, x, z);
     end
 
-    % avoid silly if (isempty(z)) checks later
+    % avoid if (isempty(z)) checks
     if (isempty(z))
       z = x;
     end
