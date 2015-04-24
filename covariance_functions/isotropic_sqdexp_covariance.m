@@ -24,7 +24,7 @@
 %
 % See also COVSEISO, COVFUNCTIONS.
 
-% Copyright (c) 2014 Roman Garnett.
+% Copyright (c) 2014--2015 Roman Garnett.
 
 function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
 
@@ -37,6 +37,8 @@ function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
     result = covSEiso(hyperparameters, x, z);
   elseif (nargin == 4)
     result = covSEiso(hyperparameters, x, z, i);
+
+  % Hessian with respect to \theta_i \theta_j
   else
 
     % ensure i <= j by exploiting symmetry
