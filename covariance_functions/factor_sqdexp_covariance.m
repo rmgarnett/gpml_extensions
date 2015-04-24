@@ -1,156 +1,123 @@
-% FACTOR_SQDEXP_COVARIANCE squared exponential "factor analysis covariance."
+% FACTOR_SQDEXP_COVARIANCE squared exponential factor analysis covariance.
 %
 % This provides a GPML-compatible covariance function implementing the
-% "factor analysis covariance:"
-%
-%   K(x, y) = \sigma^2 K_SE(xR', yR'),
-%
-% where x and y are D-dimensional row vectors, R is a d x D linear
-% embedding matrix, \sigma is the output scale, and K_SE is the
-% squared exponential covariance in R^d with unit length scale.
+% squared exponential factor analysis covariance. This can be used as
+% a drop-in replacement for covSEfact.
 %
 % This implementation supports an extended GPML syntax that allows
 % calculating the Hessian of K with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = ...
-%      factor_sqdexp_covariance(hyperparameters, x, z, i, j)
+%   dK2_didj = factor_sqdexp_covariance(theta, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
-% if z is empty, then the Hessian is evaluated at K(x, x).  Note that
+% if z is empty, then the Hessian is evaluated at K(x, x). Note that
 % the option of setting z = 'diag' for Hessian computations is not
 % supported due to no obvious need.
 %
 % These Hessians can be used to ultimately compute the Hessian of the
 % GP training likelihood (see, for example, exact_inference.m).
 %
-% The hyperparameters are:
+% The hyperparameters are the same as for covSEfact.
 %
-%   hyperparameters = [ R(:)
-%                       log(\sigma) ],
-%
-% where R(:) is the vectorized R matrix (i.e., R in column-major
-% order) and \sigma is the output scale.
-%
-% See also COVFUNCTIONS.
+% See also COVSEFACT, COVFUNCTIONS.
 
-% Copyright (c) 2013--2014 Roman Garnett.
+% Copyright (c) 2013--2015 Roman Garnett.
 
-function result = factor_sqdexp_covariance(d, hyperparameters, x, z, i, j)
+function result = factor_sqdexp_covariance(d, theta, x, z, i, j)
 
-  % used during gradient and Hessian calculations to avoid constant recomputation
+  % used during Hessian calculations to avoid constant recomputation
   persistent K;
 
+  % call covSEfact for everything but Hessian calculation
   if (nargin == 0)
-    error('gpml_extensions:missing_argument', ...
-          'd muist be specified!');
-  end
-
-  % report number of hyperparameters
-  if (nargin <= 2)
-    result = ['(D * ' num2str(d) ' + 1)'];
-    return;
-  end
-
-  D = size(x, 2);
-
-  % extract embedding matrix
-  R = reshape(hyperparameters(1:(end - 1)), [d, D])';
-
-  % create empty z if it does not exist
-  if (nargin == 3)
-    z = [];
-  end
-
-  % embed inputs
-  x_transformed = x * R;
-  if (isnumeric(z) && ~isempty(z))
-    z_transformed = z * R;
-  % don't modify the 'diag' string or empty arrays
-  else
-    z_transformed = z;
-  end
-
-  % covariance, call covSEiso on the embedded points
-  if (nargin <= 4)
-    result = covSEiso([0; hyperparameters(end)], x_transformed, z_transformed);
-    return;
-  end
-
-  % avoid silly if (isempty(z)) checks later
-  if (isempty(z))
-    z = x;
-    z_transformed = x_transformed;
-  end
-
-  % precompute and store K for repeated reuse when the first
-  % gradient or Hessian is requested
-  if (((nargin == 5) && (i == 1)) || ...
-      ((nargin == 6) && (i == 1) && (j == 1)))
-    K = covSEiso([0; hyperparameters(end)], x_transformed, z_transformed);
-  end
-
-  % derivative with respect to \theta_i
-  if (nargin == 5)
-
-    % derivative wrt entry of R?
-    embedding_derivative = (i < numel(hyperparameters));
-
-    % diagonal derivatives
-    if (~isnumeric(z))
-      % diagonal deriviatives wrt R are all zero
-      if (embedding_derivative)
-        result = zeros(size(x, 1), 1);
-      % log output scale
-      else
-        result = 2 * covSEiso([0; hyperparameters(end)], x_transformed, 'diag');
-      end
-      return;
-    end
-
-    if (embedding_derivative)
-      row    = 1 + mod(i - 1, d);
-      column = 1 + floor((i - 1) / d);
-
-      factor = bsxfun(@minus, x(:, column), z(:, column)') .* ...
-               bsxfun(@minus, x_transformed(:, row), z_transformed( :, row)');
-      result = -factor .* K;
-    % log output scale
-    else
-      result = K + K;
-    end
+    result = covSEfact();
+  elseif (nargin <= 2)
+    result = covSEfact(d);
+  elseif (nargin == 3)
+    result = covSEfact(d, theta, x);
+  elseif (nargin == 4)
+    result = covSEfact(d, theta, x, z);
+  elseif (nargin == 5)
+    result = covSEfact(d, theta, x, z, i);
 
   % Hessian with respect to \theta_i \theta_j
   else
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = factor_sqdexp_covariance(d, hyperparameters, x, z, j, i);
+      result = factor_sqdexp_covariance(d, theta, x, z, j, i);
       return;
     end
 
     % Hessians involving the log output scale
-    if (j == numel(hyperparameters))
-      result = 2 * factor_sqdexp_covariance(d, hyperparameters, x, z, i);
+    if (j == numel(theta))
+      result = 2 * covSEfact(d, theta, x, z, i);
       return;
     end
 
-    first_row     = 1 + mod(i - 1, d);
-    first_column  = 1 + floor((i - 1) / d);
-    second_row    = 1 + mod(j - 1, d);
-    second_column = 1 + floor((j - 1) / d);
+    % precompute and store K for repeated reuse when the first
+    % Hessian is requested
+    if ((i == 1) && (j == 1))
+      K = covSEfact(d, theta, x, z);
+    end
 
-    % Hessians involving only the entries of R
+    D = size(x, 2);
+
+    % extract L
+    L = zeros(d, D);
+    L_entries = theta(1:(end - 1));
+    L(triu(true(d, D))) = L_entries(:);
+    if (d == 1)
+      L_diag = L(1);
+    else
+      L_diag = diag(L);
+    end
+    L(1:(d + 1):d^2) = exp(L_diag);
+
+    % transform inputs
+    Lx = x * L';
+
+    % avoid if (isempty(z)) checks
+    if (isempty(z))
+       z =  x;
+      Lz = Lx;
+    else
+      Lz = z * L';
+    end
+
+    % make lookup matrix
+    ind = zeros(size(L));
+    ind(triu(true(d, D))) = 1:(numel(theta) - 1);
+
+    [i_row, i_col] = ind2sub([d, D], find(ind == i));
+    [j_row, j_col] = ind2sub([d, D], find(ind == j));
+
+    exp_factor = 1;
+    if (i_row == i_col)
+     exp_factor = exp_factor * L(i_row, i_col);
+    end
+    if (j_row == j_col)
+     exp_factor = exp_factor * L(j_row, j_col);
+    end
+
     untransformed_factor = ...
-        bsxfun(@minus, x(:, first_column),  z(:, first_column)') .* ...
-        bsxfun(@minus, x(:, second_column), z(:, second_column)');
-    transformed_factor = ...
-        bsxfun(@minus, x_transformed(:, first_row),  z_transformed(:, first_row)') .* ...
-        bsxfun(@minus, x_transformed(:, second_row), z_transformed(:, second_row)') - ...
-        (first_row == second_row);
+        bsxfun(@minus, x(:, i_col), z(:, i_col)') .* ...
+        bsxfun(@minus, x(:, j_col), z(:, j_col)');
 
-    result = untransformed_factor .* transformed_factor .* K;
+    transformed_factor = ...
+        bsxfun(@minus, Lx(:, i_row), Lz(:, i_row)') .* ...
+        bsxfun(@minus, Lx(:, j_row), Lz(:, j_row)') -  ...
+        (i_row == j_row);
+
+    result = untransformed_factor .* transformed_factor .* exp_factor .* K;
+
+    % diagonal entries need correction due to exp() transformation
+    if (all([i_row, i_col, j_row, j_col] == i_row))
+      result = result + covSEfact(d, theta, x, z, i);
+    end
+
   end
 
 end
