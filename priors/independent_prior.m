@@ -8,29 +8,28 @@
 % infernce_with_prior to acheive MAP (rather than MLE) hyperparameter
 % inference. See inference_with_prior.m for more information.
 %
-% This file supports both calculating the negative log prior, its
-% gradient, and its (diagonal) Hessian matrix, as well as drawing a
-% sample from the prior. The latter is accomplished by not passing in
-% a value for the hyperparameters. See priors.m for more information.
+% This file supports both calculating the log prior, its gradient, and
+% its (diagonal) Hessian matrix, as well as drawing a sample from the
+% prior. The latter is accomplished by not passing in a value for the
+% hyperparameters. See priors.m for more information.
 %
 % Usage (prior mode)
 % ------------------
 %
-%   [nlZ, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
+%   [lp, dlp, Hlp] = independent_prior(priors, theta)
 %
 % Inputs:
 %
-%            priors: a struct containing the elementwise priors for
-%                    each hyperparameter (see below)
-%   hyperparameters: a GPML hyperparameter struct
+%   priors: a struct containing the elementwise priors for
+%           each hyperparameter (see below)
+%    theta: a GPML hyperparameter struct
 %
 % Outputs:
 %
-%     nlZ: the negative log prior evaluated at the hyperparameters
-%    dnlZ: the gradient of the negative log prior evaluated at the
-%          hyperparameters
-%    HnlZ: the a struct containing the Hessian of the negative log
-%          prior evaluated at theta (see hessians.m)
+%    lZ: the log prior evaluated at the hyperparameters
+%   dlp: the gradient of the log prior evaluated at \theta
+%   Hlp: the a struct containing the Hessian of the log
+%          prior evaluated at \theta (see hessians.m)
 %
 % Usage (sample mode)
 % -------------------
@@ -60,7 +59,7 @@
 %
 % [Prior mode]
 %
-%   [nlZ, dnlZ, d2nlZ] = prior(theta)
+%   [lp, dlp, d2lp] = prior(theta)
 %
 % Input:
 %
@@ -68,10 +67,9 @@
 %
 % Outputs:
 %
-%     nlZ: the negative log prior evaluated at theta
-%    dnlZ: the derivative of the negative log prior evaluated at theta
-%   d2nlZ: the second derivative of the negative log prior
-%          evaluated at theta
+%     lp: the log prior evaluated at \theta
+%    dlp: the derivative of the log prior evaluated at \theta
+%   d2lp: the second derivative of the log prior evaluated at \theta
 %
 % [Sample mode]
 %
@@ -82,12 +80,12 @@
 %   sample: a sample drawn from the prior
 %
 % There are several example implementations provided for Gaussian,
-% Laplace, constant (improper), and uniform hyperpriors.
+% Laplace, constant (improper), and "smoothed uniform" hyperpriors.
 %
-% See also: GP_POSTERIOR, PRIORS, CONSTANT_PRIOR, GAUSSIAN_PRIOR,
-% LAPLACE_PRIOR, UNIFORM_PRIOR, HESSIANS.
+% See also: GP_POSTERIOR, PRIORDISTRIBUTIONS, CONSTANT_PRIOR,
+% GAUSSIAN_PRIOR, LAPLACE_PRIOR, SMOOTH_BOX_2_PRIOR, HESSIANS.
 
-% Copyright (c) 2014 Roman Garnett.
+% Copyright (c) 2014--2015 Roman Garnett.
 
 function [result, dlp, Hlp] = independent_prior(priors, theta)
 

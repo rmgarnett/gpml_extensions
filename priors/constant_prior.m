@@ -5,12 +5,12 @@
 %
 %   p(\theta) = 1
 %
-% This file supports both calculating the negative log prior and its
+% This file supports both calculating the log prior and its
 % derivatives as well as drawing a sample from the prior. The latter
 % is accomplished by not passing in a value for the hyperparameter.
-% See priors.m for more information. Notice that this particular
-% prior cannot be sampled from; therefore, a default value must be
-% provided, which is always returned when a sample is requested.
+% See priors.m for more information. Notice that this particular prior
+% cannot be sampled from; therefore, a default value must be provided,
+% which is always returned when a sample is requested.
 %
 % Usage (prior mode)
 % ------------------

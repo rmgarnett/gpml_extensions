@@ -9,8 +9,8 @@
 % This can be used as a drop-in replacement for priorLaplace.
 %
 % This implementation supports an extended GPML syntax that allows
-% computing the second derivative of the negative log prior evalauted
-% at theta. The syntax is:
+% computing the second derivative of the log prior evalauted at
+% theta. The syntax is:
 %
 %   [lp, dlp, d2lp] = laplace_prior(mean, variance, theta),
 %
