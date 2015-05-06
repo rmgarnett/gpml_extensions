@@ -1,32 +1,29 @@
-% LAPLACE_INFERENCE infLaplace replacement supporting Hessian calculation.
+% LAPLACE_INFERENCE infLaplace replacement supporting additional derivatives.
 %
 % This provides a GPML-compatible inference method performing
 % approximate inference via a Laplace approximation. This
 % implementation supports an extended API allowing the calculation of:
 %
-% - the Hessian of the negative log likelihood at \theta,
-% - the partial derivatives of \alpha with respect to \theata, and
-% - the partial derivatives of diag W^{-1} with respect to \theta.
+% - the partial derivatives of \alpha with respect to \theata,
+% - the partial derivatives of diag W^{-1} with respect to \theta, and
+% - the Hessian of the negative log likelihood at \theta.
 %
-% The latter two can be used to compute the gradient of the predictive
-% mean and variance of the approximate posterior GP with respect to
-% the hyperparameters.
+% The fomer two can be used to compute the gradient of the latent
+% predictive mean and variance of the approximate posterior GP with
+% respect to the hyperparameters.
 %
 % This can be used as a drop-in replacement for infLaplace with no
 % extra computational cost.
-%%
+%
 % Usage
 % -----
 %
 % The API is identical to GPML inference methods, expect for three
 % additional optional arguments:
 %
-%   [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
-%       laplace_inference(hyperparameters, mean_function, ...
+%   [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
+%       laplace_inference(theta, mean_function, ...
 %                         covariance_function, likelihood, x, y);
-%
-% HnlZ proivdes the Hessian of -\log p(y | X, \theta). See hessians.m
-% for information regarding the Hessian struct HnlZ.
 %
 % dalpha and dWinv provide the partial derivatives of the posterior
 % parameters \alpha and W^{-1} with respect to \theta. These
@@ -34,24 +31,30 @@
 % example, dalpha.cov(:, 1) gives the derivative of \alpha with
 % respect to the first covariance hyperparameter.
 %
+% HnlZ proivdes the Hessian of -\log p(y | X, \theta). See hessians.m
+% for information regarding the Hessian struct HnlZ.
+%
 % Requirements
 % ------------
 %
-% To use this functionality, both the mean and covariance functions
-% must support an extended GPML syntax that allows for calculating the
-% Hessian of the training mean mu or training covariance K with
-% respect to any pair of hyperparameters. The syntax for mean
-% functions is:
+% The posterior derivatives dalpha and dWinv can be used with
+% unmodified GPML mean, covariance, and likelihood functions.
 %
-%   dmu_didj = mean_function(hyperparameters, x, i, j);
+% To computate the Hessian HnlZ, both the mean and covariance
+% functions must support an extended GPML syntax that allows for
+% calculating the Hessian of the training mean mu or training
+% covariance K with respect to any pair of hyperparameters. The syntax
+% for mean functions is:
 %
-% where dmu_didj is \partial^2 mu(x) / \partial \theta_i \partial \theta_j.
+%   d2mu_didj = mean_function(theta, x, i, j);
+%
+% where d2mu_didj is \partial^2 mu(x) / \partial \theta_i \partial \theta_j.
 %
 % The syntax for covariance functions is similar:
 %
-%   dK2_didj = covariance_function(hyperparameters, x, [], i, j);
+%   d2K_didj = covariance_function(theta, x, [], i, j);
 %
-% where dK2_didj is \partial^2 K(x, x) / \partial \theta_i \partial \theta_j.
+% where d2K_didj is \partial^2 K(x, x) / \partial \theta_i \partial \theta_j.
 %
 % Furhtermore, the likelihood must also support an extended GPML
 % syntax for calculating further derivatives; a summary is below.
@@ -59,7 +62,7 @@
 % The likelihood syntax with five outputs:
 %
 %   [lp, dlp, d2lp, d3lp, d4lp] = ...
-%           likelihood(hyperparameters, y, f, [], 'infLaplace');
+%           likelihood(theta, y, f, [], 'infLaplace');
 %
 % returns the additional value
 %
@@ -68,7 +71,7 @@
 % The gradient syntax with four outputs:
 %
 %   [lp_dhyp, dlp_dhyp, d2lp_dhyp, d3lp_dhyp] = ...
-%           likelihood(hyperparameters, y, f, [], 'infLaplace', i);
+%           likelihood(theta, y, f, [], 'infLaplace', i);
 %
 % returns the additional value
 %
@@ -77,7 +80,7 @@
 % Finally, a new Hessian syntax:
 %
 %   [lp_dhyp2, dlp_dhyp2, d2lp_dhyp2] = ...
-%           likelihood(hyperparameters, y, f, [], 'infLaplace', i, j);
+%           likelihood(theta, y, f, [], 'infLaplace', i, j);
 %
 % returns
 %
@@ -85,14 +88,11 @@
 %    dlp_dhyp2 = d^3 log p(y | f) / (df   d\theta_i d\theta_j)
 %   d2lp_dhyp2 = d^4 log p(y | f) / (df^2 d\theta_i d\theta_j)
 %
-% Finally, this inference method also supports two further optional
-% outputs.
-%
 % See also INFMETHODS, HESSIANS.
 
-% Copyright (c) 2013--2014 Roman Garnett.
+% Copyright (c) 2013--2015 Roman Garnett.
 
-function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
+function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
       laplace_inference(theta, mean_function, covariance_function, ...
           likelihood, x, y, options)
 
@@ -103,10 +103,8 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     options = [];
   end
 
-  % If Hessian is not requested, simply call infLaplace and return. This
-  % allows us to assume the Hessian is needed for the remainder of the
-  % code, making it more readible.
-
+  % If addditional outputs are not requested, simply call infLaplace and
+  % return.
   if (nargout <= 3)
     if (nargout == 1)
       posterior = ...
@@ -125,11 +123,13 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
     return;
   end
 
+  % determine what needs to be computed
+  compute_dalpha = (nargout >= 4);
+  compute_dWinv  = (nargout >= 5);
+  compute_HnlZ   = (nargout >= 6);
+
   n = size(x, 1);
   I = eye(n);
-
-  % initialize output
-  dnlZ = theta;
 
   num_cov  = numel(theta.cov);
   num_lik  = numel(theta.lik);
@@ -140,21 +140,26 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   likelihood_ind = (num_cov + 1):(num_cov + num_lik);
   mean_ind       = (num_cov + num_lik + 1):num_hyperparameters;
 
-  HnlZ.H              = zeros(num_hyperparameters);
-  HnlZ.covariance_ind = covariance_ind;
-  HnlZ.likelihood_ind = likelihood_ind;
-  HnlZ.mean_ind       = mean_ind;
+  % initialize output
+  dnlZ = theta;
 
-  if (nargout >= 4)
+  if (compute_dalpha)
     dalpha.cov  = zeros(n, num_cov);
     dalpha.lik  = zeros(n, num_lik);
     dalpha.mean = zeros(n, num_mean);
   end
 
-  if (nargout >= 5)
+  if (compute_dWinv)
     dWinv.cov  = zeros(n, num_cov);
     dWinv.lik  = zeros(n, num_lik);
     dWinv.mean = zeros(n, num_mean);
+  end
+
+  if (compute_HnlZ)
+    HnlZ.value              = zeros(num_hyperparameters);
+    HnlZ.covariance_ind = covariance_ind;
+    HnlZ.likelihood_ind = likelihood_ind;
+    HnlZ.mean_ind       = mean_ind;
   end
 
   % convenience handles
@@ -179,21 +184,6 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   % indices of the diagonal entries of an (n x n) matrix
   diag_ind = (1:(n + 1):(n * n))';
 
-  % converts to column vector
-  vectorize = @(x) (x(:));
-
-  % computes tr(AB)
-  AB_trace = @(A, B) (vectorize(A')' * B(:));
-
-  % computes tr(A diag(a) B diag(b))
-  ADBD_trace = @(A, a, B, b) (b' * (A .* B') * a);
-
-  % computes diag(AB)
-  AB_diag = @(A, B) (sum(B .* A')');
-
-  % computes diag(A diag(a) B diag(b))
-  ADBD_diag = @(A, a, B, b) ((A .* B') * a .* b);
-
   % use last alpha as starting point if possible
   if (any(size(last_alpha) ~= [n, 1]) || any(isnan(last_alpha)))
     alpha = zeros(n, 1);
@@ -211,20 +201,17 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
   % mode of training latent value posterior
   f = K_x * alpha + mu_x;
 
-  [lp, ~, d2lp, d3lp, d4lp] = ell(f);
+  if (compute_HnlZ)
+    [lp, ~, d2lp, d3lp, d4lp] = ell(f);
+  else
+    [lp, ~, d2lp, d3lp]       = ell(f);
+  end
 
   w     = -d2lp;
   w_inv = 1 ./ w;
 
   posterior.alpha = alpha;
   posterior.sW    = sqrt(abs(w)) .* sign(w);
-
-  L = chol(K_x);
-  K_inv_times = @(x) solve_chol(L, x);
-  K_inv = K_inv_times(I);
-
-  A = K_inv;
-  A(diag_ind) = A(diag_ind) + w;
 
   if (any(w < 0))
     % posterior.L contains -V^{-1}
@@ -258,16 +245,272 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
 
   dL_df = (0.5 * a_inv .* d3lp)';
 
+  implicit_gradient = @(df_dtheta) -(dL_df * df_dtheta);
+
+  % when computing Hessian, store various intermediate computations
+  % for reuse
+  if (compute_HnlZ)
+
+    % derivatives of mu, K, and likelihood with respect to hyperparameters
+    dms = zeros(n, num_mean);
+    dKs = zeros(n, n, num_cov);
+
+      lp_dhyps = zeros(n, num_lik);
+     dlp_dhyps = zeros(n, num_lik);
+    d2lp_dhyps = zeros(n, num_lik);
+    d3lp_dhyps = zeros(n, num_lik);
+
+    % derivatives of \hat{f} with respect to \theta
+    df_dthetas = zeros(n, num_hyperparameters);
+
+    % K^{-1} [dK / dK_i] and V^{-1} [dK / dK_i]
+    L = chol(K_x);
+    K_inv_times = @(x) solve_chol(L, x);
+
+    K_inv_dKs = zeros(n, n, num_cov);
+    V_inv_dKs = zeros(n, n, num_cov);
+  end
+
+  for i = 1:num_cov
+    dK = K(i);
+
+    V_inv_dK = V_inv_times(dK);
+
+    dK_alpha = dK * alpha;
+
+    df_dtheta = S * dK_alpha;
+
+    % store if necessary
+    if (compute_HnlZ)
+      dKs(:, :, i) = dK;
+
+      V_inv_dKs(:, :, i) = V_inv_dK;
+      K_inv_dKs(:, :, i) = K_inv_times(dK);
+
+      df_dthetas(:, covariance_ind(i)) = df_dtheta;
+    end
+
+    dnlZ.cov(i) = 0.5 * (trace(V_inv_dK) - alpha' * dK_alpha) + ...
+        implicit_gradient(df_dtheta);
+
+    if (compute_dalpha)
+      dalpha.cov(:, i) = d2lp .* df_dtheta;
+    end
+
+    if (compute_dWinv)
+      dWinv.cov(:, i) = d3lp .* df_dtheta;
+    end
+  end
+
+  for i = 1:num_lik
+
+    % compute and store d3lp_dhyp if necessary
+    if (compute_HnlZ)
+      [lp_dhyp, dlp_dhyp, d2lp_dhyp, d3lp_dhyps(:, i)] = ell(f, i);
+    else
+      [lp_dhyp, dlp_dhyp, d2lp_dhyp]                   = ell(f, i);
+    end
+
+    df_dtheta = S * (K_x * dlp_dhyp);
+
+    % store if necessary
+    if (compute_HnlZ)
+        lp_dhyps(:, i) =   lp_dhyp;
+       dlp_dhyps(:, i) =  dlp_dhyp;
+      d2lp_dhyps(:, i) = d2lp_dhyp;
+
+      df_dthetas(:, likelihood_ind(i)) = df_dtheta;
+    end
+
+    dnlZ.lik(i) = -sum(lp_dhyp) - 0.5 * a_inv' * d2lp_dhyp + ...
+        implicit_gradient(df_dtheta);
+
+    if (compute_dalpha)
+      dalpha.lik(:, i) = dlp_dhyp + d2lp .* df_dtheta;
+    end
+
+    if (compute_dWinv)
+      dWinv.lik(:, i) = d2lp_dhyp + d3lp .* df_dtheta;
+    end
+  end
+
+  for i = 1:num_mean
+    dm = mu(i);
+
+    df_dtheta = S * dm;
+
+    % store if necessary
+    if (compute_HnlZ)
+      dms(:, i) = dm;
+
+      df_dthetas(:, mean_ind(i)) = df_dtheta;
+    end
+
+    dnlZ.mean(i) = -alpha' * dm + implicit_gradient(df_dtheta);
+
+    if (compute_dalpha)
+      dalpha.mean(:, i) = d2lp .* df_dtheta;
+    end
+
+    if (compute_dWinv)
+      dWinv.mean(:, i) = d3lp .* df_dtheta;
+    end
+  end
+
+  % dWinv currently contains dW / dtheta
+  if (compute_dWinv)
+    d = (w_inv .* w_inv);
+    dWinv.cov  = bsxfun(@times, d, dWinv.cov);
+    dWinv.lik  = bsxfun(@times, d, dWinv.lik);
+    dWinv.mean = bsxfun(@times, d, dWinv.mean);
+  end
+
+  if (~compute_HnlZ)
+    return;
+  end
+
+  % converts to column vector
+  vectorize = @(x) (x(:));
+
+  % computes diag(AB)
+  AB_diag = @(A, B) (sum(B .* A')');
+
+  % computes diag(A diag(a) B diag(b))
+  ADBD_diag = @(A, a, B, b) ((A .* B') * a .* b);
+
+  % computes tr(AB)
+  AB_trace = @(A, B) (vectorize(A')' * B(:));
+
+  % computes tr(A diag(a) B diag(b))
+  ADBD_trace = @(A, a, B, b) (b' * (A .* B') * a);
+
+  d2f_dtheta2s   = zeros(n, num_hyperparameters, num_hyperparameters);
+  d2L_dtheta_dfs = zeros(num_hyperparameters, n);
+
+  for i = 1:num_cov
+    ind_i = covariance_ind(i);
+
+    % compute once
+    if (i == 1)
+      V_inv_w_inv = AD(V_inv, w_inv);
+    end
+
+    % diag[W^{-1} V^{-1} [dK / dK_i] V^{-1} W^{-1}]
+    beta = AB_diag(DA(w_inv, V_inv_dKs(:, :, i)), V_inv_w_inv);
+
+    d2L_dtheta_dfs(ind_i, :) = ...
+        (K_inv_dKs(:, :, i) * alpha + 0.5 * beta .* d3lp)';
+
+    for j = i:num_cov
+      ind_j = covariance_ind(j);
+
+      HK = K(i, j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * ( ...
+              HK * alpha + ...
+              dKs(:, :, i) * (d2lp .* df_dthetas(:, ind_j)) + ...
+              dKs(:, :, j) * (d2lp .* df_dthetas(:, ind_i)) + ...
+              K_x * (d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)) ...
+              );
+
+      HnlZ.value(ind_i, ind_j) = ...
+          alpha' * dKs(:, :, i) * K_inv_dKs(:, :, j) * alpha + ...
+          0.5 * (AB_trace(V_inv, HK) - ...
+                 AB_trace(V_inv_dKs(:, :, i), V_inv_dKs(:, :, j)) - ...
+                 alpha' * HK * alpha);
+    end
+
+    for j = 1:num_lik
+      ind_j = likelihood_ind(j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * ( ...
+              dKs(:, :, i) * (dlp_dhyps(:, j) + d2lp .* df_dthetas(:, ind_j)) + ...
+              K_x * (d2lp_dhyps(:, j) .* df_dthetas(:, ind_i) + ...
+                     d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)) ...
+              );
+
+      HnlZ.value(ind_i, ind_j) = -0.5 * beta' * d2lp_dhyp(:, j);
+    end
+
+    for j = 1:num_mean
+      ind_j = mean_ind(j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * ( ...
+              dKs(:, :, i) * (d2lp .* df_dthetas(:, ind_j)) + ...
+              K_x * (d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)) ...
+              );
+
+      HnlZ.value(ind_i, ind_j) = alpha' * K_inv_dKs(:, :, i)' * dms(:, j);
+    end
+  end
+
+  for i = 1:num_lik
+    ind_i = likelihood_ind(i);
+
+    d2L_dtheta_dfs(ind_i, :) = ...
+        (dlp_dhyps(:, i) + ...
+         0.5 * (a_inv .* d3lp_dhyps(:, i) + ...
+                ADBD_diag(A_inv, d2lp_dhyps(:, i), A_inv, d3lp)))';
+
+    for j = i:num_lik
+      ind_j = likelihood_ind(j);
+
+      [lp_dhyp2, dlp_dhyp2, d2lp_dhyp2] = ell(f, i, j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * (K_x * (dlp_dhyp2 + ...
+                      d2lp_dhyps(:, i) .* df_dthetas(:, ind_j) + ...
+                      d2lp_dhyps(:, j) .* df_dthetas(:, ind_i) + ...
+                      d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)));
+
+      HnlZ.value(ind_i, ind_j) = -sum(lp_dhyp2) - ...
+          0.5 * (a_inv' * d2lp_dhyp2 + ...
+                 ADBD_trace(A_inv, d2lp_dhyps(:, i), A_inv, d2lp_dhyps(:, j)));
+    end
+
+    for j = 1:num_mean
+      ind_j = mean_ind(j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * (K_x * (d2lp_dhyps(:, i) .* dms(:, j) + ...
+                      d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)));
+
+      % explicit derivative is zero
+    end
+  end
+
+  for i = 1:num_mean
+    ind_i = mean_ind(i);
+
+    d2L_dtheta_dfs(ind_i, :) = K_inv_times(dms(:, i))';
+
+    for j = i:num_mean
+      ind_j = mean_ind(j);
+
+      d2m = mu(i, j);
+
+      d2f_dtheta2s(:, ind_i, ind_j) = ...
+          S * (d2m + ...
+               K_x * (d3lp .* df_dthetas(:, ind_i) .* df_dthetas(:, ind_j)) ...
+               );
+
+      HnlZ.value(ind_i, ind_j) = ...
+          -alpha' * d2m + dms(:, i)' * K_inv_times(dms(:, j));
+    end
+  end
+
+  % correct Hessian due to dependence of \hat{f} on \theta
+  A = K_inv_times(I);
+  A(diag_ind) = A(diag_ind) + w;
+
   d2L_df2 = -A;
   d2L_df2(diag_ind) = d2L_df2(diag_ind) + ...
       0.5 * (a_inv .* d4lp + ...
              ADBD_diag(A_inv, d3lp, A_inv, d3lp));
 
-  df_dtheta     = zeros(n, num_hyperparameters);
-  d2f_dtheta2   = zeros(n, num_hyperparameters, num_hyperparameters);
-  d2L_dtheta_df = zeros(num_hyperparameters, n);
-
-  implicit_gradient = @(df_dtheta) -(dL_df * df_dtheta);
   implicit_hessian  = ...
       @(df_dtheta_i, df_dtheta_j, ...
         d2f_dtheta_i_dtheta_j, ...
@@ -277,220 +520,20 @@ function [posterior, nlZ, dnlZ, HnlZ, dalpha, dWinv] = ...
         d2L_dtheta_i_df * df_dtheta_j           + ...
         d2L_dtheta_j_df * df_dtheta_i);
 
-  % store derivatives of mu, K, and likelihood with respect to hyperparameters for reuse
-  dm = zeros(n, num_mean);
-  dK = zeros(n, n, num_cov);
-
-    lp_dhyp = zeros(n, num_lik);
-   dlp_dhyp = zeros(n, num_lik);
-  d2lp_dhyp = zeros(n, num_lik);
-
-  % store K^{-1} [dK / dK_i] and V^{-1} [dK / dK_i] for reuse
-  K_inv_dK = zeros(n, n, num_cov);
-  V_inv_dK = zeros(n, n, num_cov);
-
-  % store diag[W^{-1} V^{-1} [dK / dK_i] V^{-1} W^{-1}] for reuse
-  beta = zeros(n, num_cov);
-
-  for i = 1:num_cov
-    ind = covariance_ind(i);
-
-    dK(:, :, i) = K(i);
-
-    dK_alpha = dK(:, :, i) * alpha;
-
-    K_inv_dK(:, :, i) = K_inv_times(dK(:, :, i));
-    V_inv_dK(:, :, i) = V_inv_times(dK(:, :, i));
-
-    df_dtheta(:, ind) = S * dK_alpha;
-
-    % compute once
-    if (i == 1)
-      V_inv_w_inv = AD(V_inv, w_inv);
-    end
-
-    beta(:, i) = AB_diag(DA(w_inv, V_inv_dK(:, :, i)), V_inv_w_inv);
-
-    d2L_dtheta_df(ind, :) = ...
-        (K_inv_dK(:, :, i) * alpha + 0.5 * beta(:, i) .* d3lp)';
-
-    dnlZ.cov(i) = 0.5 * (trace(V_inv_dK(:, :, i)) - alpha' * dK_alpha) + ...
-        implicit_gradient(df_dtheta(:, ind));
-
-    if (nargout >= 5)
-      dalpha.cov(:, i) = d2lp .* df_dtheta(:, ind);
-    end
-
-    if (nargout >= 6)
-      dWinv.cov(:, i) = d3lp .* df_dtheta(:, ind);
-    end
-  end
-
-  for i = 1:num_lik
-    ind = likelihood_ind(i);
-
-    [lp_dhyp(:, i), dlp_dhyp(:, i), d2lp_dhyp(:, i), d3lp_dhyp] = ell(f, i);
-
-    df_dtheta(:, ind) = S * (K_x * dlp_dhyp(:, i));
-
-    d2L_dtheta_df(ind, :) = ...
-        (dlp_dhyp(:, i) + ...
-         0.5 * (a_inv .* d3lp_dhyp + ...
-                ADBD_diag(A_inv, d2lp_dhyp(:, i), A_inv, d3lp)))';
-
-    dnlZ.lik(i) = -sum(lp_dhyp(:, i)) - 0.5 * a_inv' * d2lp_dhyp(:, i) + ...
-        implicit_gradient(df_dtheta(:, ind));
-
-    if (nargout >= 5)
-      dalpha.lik(:, i) = dlp_dhyp(:, i) + d2lp .* df_dtheta(:, ind);
-    end
-
-    if (nargout >= 6)
-      dWinv.lik(:, i) = d2lp_dhyp(:, i) + d3lp .* df_dtheta(:, ind);
-    end
-  end
-
-  for i = 1:num_mean
-    ind = mean_ind(i);
-
-    dm(:, i) = mu(i);
-
-    df_dtheta(:, ind) = S * dm(:, i);
-
-    d2L_dtheta_df(ind, :) = K_inv_times(dm(:, i))';
-
-    dnlZ.mean(i) = -alpha' * dm(:, i) + ...
-        implicit_gradient(df_dtheta(:, ind));
-
-    if (nargout >= 5)
-      dalpha.mean(:, i) = d2lp .* df_dtheta(:, ind);
-    end
-
-    if (nargout >= 6)
-      dWinv.mean(:, i) = d3lp .* df_dtheta(:, ind);
-    end
-  end
-
-  for i = 1:num_cov
-    ind_i = covariance_ind(i);
-
-    for j = i:num_cov
-      ind_j = covariance_ind(j);
-
-      HK = K(i, j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * ( ...
-              HK * alpha + ...
-              dK(:, :, i) * (d2lp .* df_dtheta(:, ind_j)) + ...
-              dK(:, :, j) * (d2lp .* df_dtheta(:, ind_i)) + ...
-              K_x * (d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)) ...
-              );
-
-      HnlZ.H(ind_i, ind_j) = ...
-          alpha' * dK(:, :, i) * K_inv_dK(:, :, j) * alpha + ...
-          0.5 * (AB_trace(V_inv, HK) - ...
-                 AB_trace(V_inv_dK(:, :, i), V_inv_dK(:, :, j)) - ...
-                 alpha' * HK * alpha);
-    end
-
-    for j = 1:num_lik
-      ind_j = likelihood_ind(j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * ( ...
-              dK(:, :, i) * (dlp_dhyp(:, j) + d2lp .* df_dtheta(:, ind_j)) + ...
-              K_x * (d2lp_dhyp(:, j) .* df_dtheta(:, ind_i) + ...
-                     d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)) ...
-              );
-
-      HnlZ.H(ind_i, ind_j) = -0.5 * beta(:, i)' * d2lp_dhyp(:, j);
-    end
-
-    for j = 1:num_mean
-      ind_j = mean_ind(j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * ( ...
-              dK(:, :, i) * (d2lp .* df_dtheta(:, ind_j)) + ...
-              K_x * (d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)) ...
-              );
-
-      HnlZ.H(ind_i, ind_j) = alpha' * K_inv_dK(:, :, i)' * dm(:, j);
-    end
-  end
-
-  for i = 1:num_lik
-    ind_i = likelihood_ind(i);
-
-    for j = i:num_lik
-      ind_j = likelihood_ind(j);
-
-      [lp_dhyp2, dlp_dhyp2, d2lp_dhyp2] = ell(f, i, j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * (K_x * (dlp_dhyp2 + ...
-                      d2lp_dhyp(:, i) .* df_dtheta(:, ind_j) + ...
-                      d2lp_dhyp(:, j) .* df_dtheta(:, ind_i) + ...
-                      d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)));
-
-      HnlZ.H(ind_i, ind_j) = -sum(lp_dhyp2) - ...
-          0.5 * (a_inv' * d2lp_dhyp2 + ...
-                 ADBD_trace(A_inv, d2lp_dhyp(:, i), A_inv, d2lp_dhyp(:, j)));
-    end
-
-    for j = 1:num_mean
-      ind_j = mean_ind(j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * (K_x * (d2lp_dhyp(:, i) .* dm(:, j) + ...
-                      d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)));
-
-      % explicit derivative is zero
-    end
-  end
-
-  for i = 1:num_mean
-    ind_i = mean_ind(i);
-
-    for j = i:num_mean
-      ind_j = mean_ind(j);
-
-      d2m = mu(i, j);
-
-      d2f_dtheta2(:, ind_i, ind_j) = ...
-          S * (d2m + ...
-               K_x * (d3lp .* df_dtheta(:, ind_i) .* df_dtheta(:, ind_j)) ...
-               );
-
-      HnlZ.H(ind_i, ind_j) = ...
-          -alpha' * d2m + dm(:, i)' * K_inv_times(dm(:, j));
-    end
-  end
-
-  % correct Hessian due to dependence of \hat{f} on \theta
   for i = 1:num_hyperparameters
     for j = i:num_hyperparameters
-      HnlZ.H(i, j) = HnlZ.H(i, j) + ...
-          implicit_hessian(...
-              df_dtheta(:, i),      ...
-              df_dtheta(:, j),      ...
-              d2f_dtheta2(:, i, j), ...
-              d2L_dtheta_df(i, :),  ...
-              d2L_dtheta_df(j, :)   ...
+      HnlZ.value(i, j) = HnlZ.value(i, j) + ...
+          implicit_hessian(          ...
+              df_dthetas(:, i),      ...
+              df_dthetas(:, j),      ...
+              d2f_dtheta2s(:, i, j), ...
+              d2L_dtheta_dfs(i, :),  ...
+              d2L_dtheta_dfs(j, :)   ...
               );
     end
   end
 
   % symmetrize Hessian
-  HnlZ.H = HnlZ.H + triu(HnlZ.H, 1)';
-
-  % dWinv current contains dW / dtheta
-  if (nargout >= 6)
-    d = (w_inv .* w_inv);
-    dWinv.cov  = bsxfun(@times, d, dWinv.cov);
-    dWinv.lik  = bsxfun(@times, d, dWinv.lik);
-    dWinv.mean = bsxfun(@times, d, dWinv.mean);
-  end
+  HnlZ.value = HnlZ.value + triu(HnlZ.value, 1)';
 
 end
