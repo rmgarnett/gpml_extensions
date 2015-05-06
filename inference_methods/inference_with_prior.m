@@ -33,20 +33,21 @@
 % GPML interface allowing the Hessian of the negative unnormalized log
 % posterior to also be returned, if desired.
 %
-% The API of this function is not directly compatible with GPML. GPML
-% does not support constructing a meta inference method in the same
-% way as you would a covariance or mean function; that is, you cannot
-% use, e.g.,
+% The API of this function is not directly compatible with GPML prior
+% to version 3.4. GPML prior to version 3.5 did not support
+% constructing a meta inference method in the same way as you would a
+% covariance or mean function; that is, you could not use, e.g.,
 %
 %   inference_method = {@inference_with_prior, inference_method, prior}.
 %
-% Instead, you may use the provided add_prior_to_inference_method
-% function to return a function handle for use in, e.g., gp.m.
+% This is now possible. For GPML prior to version 3.5, you may instead
+% use the provided add_prior_to_inference_method function to return a
+% function handle for use in, e.g., gp.m.
 %
 % Usage
 % -----
 %
-%   [posterior, nlZ, dnlZ, HnlZ] = ...
+%   [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 %           inference_with_prior(inference_method, prior, ...
 %           hyperparameters, mean_function, covariance_function, ...
 %           likelihood, x, y)
@@ -67,26 +68,10 @@
 %
 %   posterior: a GPML posterior struct
 %         nlZ: the negative unnormalized log posterior
-%        dnlZ: the gradient negative of the unnormalized log posterior
-%        HnlZ: the Hessian negative of the unnormalized log posterior
-%
-% Notes on Hessian
-% ----------------
-%
-% To evaluate the Hessian, the supplied inference method must support
-% an extended GPML syntax:
-%
-%   [posterior, nlZ, dnlZ, HnlZ] = ...
-%       inference_method(hyperparameters, mean_function, ...
-%                        covariance_function, likelihood, x, y);
-%
-% where the fourth output is the Hessian of the negative log
-% likelihood. See hessians.m for more information regarding the
-% Hessian struct HnlZ.
-%
-% See exact_inference.m for an example inference method supporting
-% this extended API. exact_inference may be used as a drop-in
-% replacement for infExact.
+%        dnlZ: the gradient of the negative unnormalized log posterior
+%      dalpha: the gradient of alpha
+%       dWinv: the gradient of diag(W^{-1})
+%        HnlZ: the Hessian of the negative unnormalized log posterior
 %
 % See also PRIORS, INDEPENDENT_PRIOR, EXACT_INFERENCE, HESSIANS.
 
@@ -106,47 +91,47 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     [posterior, nlZ] = ...
         inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
-    nlZ = nlZ + prior(theta);
+    nlZ = nlZ - prior(theta);
     return;
 
   elseif (nargout == 3)
-    [prior_nlZ, prior_dnlZ] = prior(theta);
+    [prior_lp, prior_dlp] = prior(theta);
     [posterior, nlZ, dnlZ] = ...
         inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
 
   elseif (nargout == 4)
-    [prior_nlZ, prior_dnlZ] = prior(theta);
+    [prior_lp, prior_dlp] = prior(theta);
     [posterior, nlZ, dnlZ, dalpha] = ...
         inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
 
   elseif (nargout == 5)
-    [prior_nlZ, prior_dnlZ] = prior(theta);
+    [prior_lp, prior_dlp] = prior(theta);
     [posterior, nlZ, dnlZ, dalpha, dWinv] = ...
         inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
 
   elseif (nargout == 6)
-    [prior_nlZ, prior_dnlZ, prior_HnlZ] = prior(theta);
+    [prior_lp, prior_dlp, prior_Hlp] = prior(theta);
     [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
         inference_method(theta, mean_function, covariance_function, ...
                          likelihood, x, y);
   end
 
-  nlZ = nlZ + prior_nlZ;
+  nlZ = nlZ - prior_lp;
 
   % merge gradient structs
   fields = fieldnames(theta);
   for i = 1:numel(fields)
     field = fields{i};
 
-    dnlZ.(field) = dnlZ.(field) + prior_dnlZ.(field);
+    dnlZ.(field) = dnlZ.(field) - prior_dlp.(field);
   end
 
   % merge Hessian if required
   if (nargout == 6)
-    HnlZ.value = HnlZ.value + prior_HnlZ.value;
+    HnlZ.value = HnlZ.value - prior_Hlp.value;
   end
 
 end
