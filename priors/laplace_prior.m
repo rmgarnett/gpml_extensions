@@ -1,81 +1,46 @@
-% LAPLACE_PRIOR Laplace hyperprior given mean and diversity.
+% LAPLACE_PRIOR priorLaplace replacement computing second derivative.
 %
-% This file implements a Laplace prior for a hyperparameter given a
-% mean \mu and diversity b:
+% This provides a GPML-compatible prior function implementing a
+% Laplace prior for a hyperparameter with a given mean \mu and
+% variance \sigma^2:
 %
-%   p(\theta) = Laplace(\theta; \mu, b).
+%   p(\theta) = Laplce(\theta; \mu, \sigma^2)
 %
-% This file supports both calculating the negative log prior and its
-% derivatives as well as drawing a sample from the prior. The latter
-% is accomplished by not passing in a value for the hyperparameter.
-% See priors.m for more information.
+% This can be used as a drop-in replacement for priorLaplace.
 %
-% Usage (prior mode)
-% ------------------
+% This implementation supports an extended GPML syntax that allows
+% computing the second derivative of the negative log prior evalauted
+% at theta. The syntax is:
 %
-%   [nlZ, dnlZ, d2nlZ] = laplace_prior(mean, diversity, theta)
+%   [lp, dlp, d2lp] = laplace_prior(mean, variance, theta),
 %
-% Inputs:
+% where d2lp = d^2 \log(p(\theta)) / d \theta^2.
 %
-%        mean: the prior mean
-%   diversity: the prior "diversity" parameter b
-%       theta: the value of the hyperparameter
-%
-% Outputs:
-%
-%     nlZ: the negative log prior evaluated at theta
-%    dnlZ: the derivative of the negative log prior evaluated at theta
-%   d2nlZ: the second derivative of the negative log prior
-%          evaluated at theta
-%
-% Usage (sample mode)
-% -------------------
-%
-%   sample = laplace_prior(mean, diversity)
-%
-% Inputs:
-%
-%        mean: the prior mean
-%   diversity: the prior "diversity" parameter b
-%
-% Output:
-%
-%   sample: a sample drawn from the prior
-%
-% See also: PRIORS.
+% See also: PRIORLAPLACE, PRIORDISTRIBUTIONS, INDEPENDENT_PRIOR.
 
-% Copyright (c) 2014 Roman Garnett.
+% Copyright (c) 2014--2015 Roman Garnett.
 
-function [result, dnlZ, d2nlZ] = laplace_prior(mean, diversity, theta)
+function [result, dlp, d2lp] = laplace_prior(mean, variance, theta)
 
-  % draw sample
-  if (nargin < 3)
-    u = rand - 0.5;
-    result = mean - diversity * sign(u) * log(1 - 2 * abs(u));
+  % call priorLaplace for everything but second derivative
+  if (nargin < 2)
+    result = priorLaplace();
+  elseif (nargin == 2)
+    result = priorLaplace(mean, variance);
+  else
+    if (nargout <= 1)
+       result       = priorLaplace(mean, variance, theta);
+    else
+      [result, dlp] = priorLaplace(mean, variance, theta);
+    end
+  end
+
+  % if second derivative not requested, we are done.
+  if (nargout <= 2)
     return;
   end
 
-  log_2 = 0.693147180559945;
-
-  % negative log likelihood
-  result = log_2 + log(diversity) + abs(theta - mean) / diversity;
-
-  % first derivative of negative log likelihood
-  if (nargout >= 2)
-    if (theta == mean)
-      dnlZ = nan;
-    else
-      dnlZ = sign(theta - mean) / diversity;
-    end
-  end
-
-  % second derivative of negative log likelihood
-  if (nargout >= 3)
-    if (theta == mean)
-      d2nlZ = nan;
-    else
-      d2nlZ = 0;
-    end
-  end
+  % second derivative of log likelihood
+  d2lp = zeros(size(result));
 
 end

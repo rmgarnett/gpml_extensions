@@ -89,7 +89,7 @@
 
 % Copyright (c) 2014 Roman Garnett.
 
-function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
+function [result, dlp, Hlp] = independent_prior(priors, theta)
 
   fields = {'cov', 'lik', 'mean'};
 
@@ -118,56 +118,56 @@ function [result, dnlZ, HnlZ] = independent_prior(priors, hyperparameters)
   % initialize output
   result = 0;
   if (want_gradient)
-    dnlZ = hyperparameters;
+    dlp = theta;
   end
 
   if (want_hessian)
-    num_hyperparameters = numel(unwrap(hyperparameters));
+    num_hyperparameters = numel(unwrap(theta));
 
-    if (isfield(hyperparameters, 'cov'))
-      num_cov = numel(hyperparameters.cov);
+    if (isfield(theta, 'cov'))
+      num_cov = numel(theta.cov);
     else
       num_cov = 0;
     end
 
-    if (isfield(hyperparameters, 'lik'))
-      num_lik = numel(hyperparameters.lik);
+    if (isfield(theta, 'lik'))
+      num_lik = numel(theta.lik);
     else
       num_lik = 0;
     end
 
-    HnlZ.value = zeros(num_hyperparameters);
-    HnlZ.covariance_ind = 1:num_cov;
-    HnlZ.likelihood_ind = (num_cov + 1):(num_cov + num_lik);
-    HnlZ.mean_ind       = (num_cov + num_lik + 1):num_hyperparameters;
+    Hlp.value = zeros(num_hyperparameters);
+    Hlp.covariance_ind = 1:num_cov;
+    Hlp.likelihood_ind = (num_cov + 1):(num_cov + num_lik);
+    Hlp.mean_ind       = (num_cov + num_lik + 1):num_hyperparameters;
   end
 
   offset = 0;
   for i = 1:numel(fields)
     field = fields{i};
 
-    if (~isfield(hyperparameters, field))
+    if (~isfield(theta, field))
       continue;
     end
 
-    num_entries = numel(hyperparameters.(field));
+    num_entries = numel(theta.(field));
 
     % apply each of the priors to the input in turn
     for j = 1:num_entries
       % call prior with the appropriate number of outputs
       if (~(want_gradient || want_hessian))
-        nlZ = ...
-            priors.(field){j}(hyperparameters.(field)(j));
+        lp = ...
+            priors.(field){j}(theta.(field)(j));
       elseif (want_gradient && ~want_hessian)
-        [nlZ, dnlZ.(field)(j)] = ...
-            priors.(field){j}(hyperparameters.(field)(j));
+        [lp, dlp.(field)(j)] = ...
+            priors.(field){j}(theta.(field)(j));
       else
-        [nlZ, dnlZ.(field)(j), HnlZ.value(offset + j, offset + j)] = ...
-            priors.(field){j}(hyperparameters.(field)(j));
+        [lp, dlp.(field)(j), Hlp.value(offset + j, offset + j)] = ...
+            priors.(field){j}(theta.(field)(j));
       end
 
-      % accumulate negative log likelihood
-      result = result + nlZ;
+      % accumulate log prior
+      result = result + lp;
     end
 
     % update Hessian offset

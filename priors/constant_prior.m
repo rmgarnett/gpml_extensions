@@ -15,7 +15,7 @@
 % Usage (prior mode)
 % ------------------
 %
-%   [nlZ, dnlZ, d2nlZ] = constant_prior(default_value, theta)
+%   [lp, dlp, d2lp] = constant_prior(default_value, theta)
 %
 % Inputs:
 %
@@ -24,10 +24,9 @@
 %
 % Outputs:
 %
-%     nlZ: the negative log prior evaluated at theta (log(1) = 0)
-%    dnlZ: the derivative of the negative log prior evaluated at theta (0)
-%   d2nlZ: the second derivative of the negative log prior
-%          evaluated at theta (0)
+%     lp: the log prior evaluated at theta (log(1) = 0)
+%    dlp: the derivative of the log prior evaluated at theta (0)
+%   d2lp: the second derivative of the log prior evaluated at theta (0)
 %
 % Usage (sample mode)
 % -------------------
@@ -42,11 +41,11 @@
 %
 %   sample: a sample "drawn" from the prior (equal to default_value)
 %
-% See also: PRIORS.
+% See also: PRIORDISTRIBUTIONS.
 
 % Copyright (c) 2014 Roman Garnett.
 
-function [result, dnlZ, d2nlZ] = constant_prior(default_value, ~)
+function [result, dlp, d2lp] = constant_prior(default_value, ~)
 
   % draw "sample"
   if (nargin < 2)
@@ -54,17 +53,17 @@ function [result, dnlZ, d2nlZ] = constant_prior(default_value, ~)
     return;
   end
 
-  % negative log likelihood
+  % log likelihood
   result = 0;
 
-  % first derivative of negative log likelihood
+  % first derivative of log likelihood
   if (nargout >= 2)
-    dnlZ = 0;
+    dlp = 0;
   end
 
-  % second derivative of negative log likelihood
+  % second derivative of log likelihood
   if (nargout >= 3)
-    d2nlZ = 0;
+    d2lp = 0;
   end
 
 end

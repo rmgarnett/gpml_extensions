@@ -1,72 +1,46 @@
-% GAUSSIAN_PRIOR Gaussian hyperprior with given mean and variance.
+% GAUSSIAN_PRIOR priorGauss replacement computing second derivative.
 %
-% This file implements a Gaussian prior for a hyperparameter with a
-% given mean \mu and variance \sigma^2:
+% This provides a GPML-compatible prior function implementing a
+% Gaussian prior for a hyperparameter with a given mean \mu and
+% variance \sigma^2:
 %
 %   p(\theta) = N(\theta; \mu, \sigma^2)
 %
-% This file supports both calculating the negative log prior and its
-% derivatives as well as drawing a sample from the prior. The latter
-% is accomplished by not passing in a value for the hyperparameter.
-% See priors.m for more information.
+% This can be used as a drop-in replacement for priorGauss.
 %
-% Usage (prior mode)
-% ------------------
+% This implementation supports an extended GPML syntax that allows
+% computing the second derivative of the negative log prior evalauted
+% at theta. The syntax is:
 %
-%   [nlZ, dnlZ, d2nlZ] = gaussian_prior(mean, variance, theta)
+%   [lp, dlp, d2lp] = gaussian_prior(mean, variance, theta),
 %
-% Inputs:
+% where d2lp = d^2 \log(p(\theta)) / d \theta^2.
 %
-%       mean: the prior mean
-%   variance: the prior variance
-%      theta: the value of the hyperparameter
-%
-% Outputs:
-%
-%     nlZ: the negative log prior evaluated at theta
-%    dnlZ: the derivative of the negative log prior evaluated at theta
-%   d2nlZ: the second derivative of the negative log prior
-%          evaluated at theta
-%
-% Usage (sample mode)
-% -------------------
-%
-%   sample = gaussian_prior(mean, variance)
-%
-% Inputs:
-%
-%       mean: the prior mean
-%   variance: the prior variance
-%
-% Output:
-%
-%   sample: a sample drawn from the prior
-%
-% See also: PRIORS.
+% See also: PRIORGAUSS, PRIORDISTRIBUTIONS, INDEPENDENT_PRIOR.
 
-% Copyright (c) 2014 Roman Garnett.
+% Copyright (c) 2014--2015 Roman Garnett.
 
-function [result, dnlZ, d2nlZ] = gaussian_prior(mean, variance, theta)
+function [result, dlp, d2lp] = gaussian_prior(mean, variance, theta)
 
-  % draw sample
-  if (nargin < 3)
-    result = mean + randn * sqrt(variance);
+  % call priorGauss for everything but second derivative
+  if (nargin < 2)
+    result = priorGauss();
+  elseif (nargin == 2)
+    result = priorGauss(mean, variance);
+  else
+    if (nargout <= 1)
+       result       = priorGauss(mean, variance, theta);
+    else
+      [result, dlp] = priorGauss(mean, variance, theta);
+    end
+  end
+
+  % if second derivative not requested, we are done.
+  if (nargout <= 2)
     return;
   end
 
-  log_2pi = 1.837877066409345;
-
-  % negative log likelihood
-  result = 0.5 * ((theta - mean)^2 / variance + log(variance) + log_2pi);
-
-  % first derivative of negative log likelihood
-  if (nargout >= 2)
-    dnlZ = (theta - mean) / variance;
-  end
-
-  % second derivative of negative log likelihood
-  if (nargout >= 3)
-    d2nlZ = 1 / variance;
-  end
+  % second derivative of log likelihood
+  d2lp = -ones(size(result)) / variance;
 
 end
