@@ -162,16 +162,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     HnlZ.mean_ind       = mean_ind;
   end
 
-  % convenience handles
-  mu  = @(   varargin) feval(mean_function{:},       theta.mean, x, varargin{:});
-  K   = @(   varargin) feval(covariance_function{:}, theta.cov,  x, [], varargin{:});
-  ell = @(f, varargin) feval(likelihood{:},          theta.lik, ...
-          y, f, [], 'infLaplace', varargin{:});
-
-  % prior mean and covariance
-  mu_x = mu();
-  K_x  = K();
-
   % computes diag(d) * A
   DA = @(d, A) bsxfun(@times, d(:), A);
 
@@ -183,6 +173,28 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
   % indices of the diagonal entries of an (n x n) matrix
   diag_ind = (1:(n + 1):(n * n))';
+
+  % convenience handles
+  mu  = @(   varargin) feval(mean_function{:},       theta.mean, x, varargin{:});
+  K   = @(   varargin) feval(covariance_function{:}, theta.cov,  x, [], varargin{:});
+  ell = @(f, varargin) feval(likelihood{:},          theta.lik, ...
+          y, f, [], 'infLaplace', varargin{:});
+
+  % prior mean and covariance
+  mu_x = mu();
+  K_x  = K();
+
+  % address potential numerical issues with K_x that arise during
+  % Hessian computation
+  if (compute_HnlZ)
+
+    % add some jitter to avoid tiny eigenvalues
+    jitter = 1e-6;
+    K_x(diag_ind) = K_x(diag_ind) + jitter;
+
+    % symmetrize
+    K_x = (K_x + K_x') / 2;
+  end
 
   % use last alpha as starting point if possible
   if (any(size(last_alpha) ~= [n, 1]) || any(isnan(last_alpha)))
