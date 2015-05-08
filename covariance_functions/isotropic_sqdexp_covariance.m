@@ -8,8 +8,7 @@
 % calculating the Hessian of K with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = ...
-%      isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
+%   dK2_didj = isotropic_sqdexp_covariance(theta, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
@@ -26,40 +25,40 @@
 
 % Copyright (c) 2014--2015 Roman Garnett.
 
-function result = isotropic_sqdexp_covariance(hyperparameters, x, z, i, j)
+function result = isotropic_sqdexp_covariance(theta, x, z, i, j)
 
   % call covSEiso for everything but Hessian calculation
   if (nargin <= 1)
     result = covSEiso;
   elseif (nargin == 2)
-    result = covSEiso(hyperparameters, x);
+    result = covSEiso(theta, x);
   elseif (nargin == 3)
-    result = covSEiso(hyperparameters, x, z);
+    result = covSEiso(theta, x, z);
   elseif (nargin == 4)
-    result = covSEiso(hyperparameters, x, z, i);
+    result = covSEiso(theta, x, z, i);
 
   % Hessian with respect to \theta_i \theta_j
   else
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = isotropic_sqdexp_covariance(hyperparameters, x, z, j, i);
+      result = isotropic_sqdexp_covariance(theta, x, z, j, i);
       return;
     end
 
     % Hessians involving the log output scale
     if (j == 2)
-      result = 2 * covSEiso(hyperparameters, x, z, i);
+      result = 2 * covSEiso(theta, x, z, i);
       return;
     end
 
-    K = covSEiso(hyperparameters, x, z, 1);
+    K = covSEiso(theta, x, z, 1);
 
     if (isempty(z))
       z = x;
     end
 
-    ell = exp(-hyperparameters(1));
+    ell = exp(-theta(1));
 
     factor = sq_dist(x' * ell, z' * ell);
 
