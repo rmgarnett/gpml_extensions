@@ -174,6 +174,9 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
   % indices of the diagonal entries of an (n x n) matrix
   diag_ind = (1:(n + 1):(n * n))';
 
+  % computes diag(AB)
+  AB_diag = @(A, B) (sum(B .* A')');
+
   % convenience handles
   mu  = @(   varargin) feval(mean_function{:},       theta.mean, x, varargin{:});
   K   = @(   varargin) feval(covariance_function{:}, theta.cov,  x, [], varargin{:});
@@ -219,11 +222,22 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     [lp, ~, d2lp, d3lp]       = ell(f);
   end
 
+  % diagonal of W matrix and its inverse
   w     = -d2lp;
   w_inv = 1 ./ w;
 
   posterior.alpha = alpha;
   posterior.sW    = sqrt(abs(w)) .* sign(w);
+
+  % here we compute the following, using the correct parameterization of
+  % the posterior structure:
+  %
+  %   log_det_B: log(det(B)), B = I + W^{1/2} K W^{1/2}
+  %       V_inv: (K + W^{-1})^{-1}
+  %           S: (I + KW)^{-1} = I - KV^{-1}
+  %
+  % additionally, we create a function handle V_inv_times(x), which
+  % will compute V^{-1}x.
 
   if (any(w < 0))
     % posterior.L contains -V^{-1}
@@ -233,7 +247,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     V_inv = -posterior.L;
     V_inv_times = @(x) (V_inv * x);
   else
-    % posterior.L contains chol(I + W^{1/2} K W^{1/2})
+    % posterior.L contains chol(I + W^{1/2} K W^{1/2}) = chol(B)
 
     B = DAD(posterior.sW, K_x);
     B(diag_ind) = B(diag_ind) + 1;
@@ -250,8 +264,18 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     S(diag_ind) = S(diag_ind) + 1;
   end
 
-  A_inv = S * K_x;
-  a_inv = diag(A_inv);
+  % define
+  %
+  %   A^{-1} = SK = K - K V^{-1} K.
+  %
+  % we always need diag(A^{-1}), and in the case of Hessian
+  % computation, need the full matrix A^{-1}. we calculate this below.
+  if (compute_HnlZ)
+    A_inv = S * K_x;
+    a_inv = diag(A_inv);
+  else
+    a_inv = AB_diag(S, K_x);
+  end
 
   nlZ = -sum(lp) + 0.5 * (alpha' * (f - mu_x) + log_det_B);
 
@@ -292,7 +316,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     df_dtheta = S * dK_alpha;
 
-    % store if necessary
+    % store intermediate calculations if necessary
     if (compute_HnlZ)
       dKs(:, :, i) = dK;
 
@@ -325,7 +349,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     df_dtheta = S * (K_x * dlp_dhyp);
 
-    % store if necessary
+    % store intermediate calculations if necessary
     if (compute_HnlZ)
         lp_dhyps(:, i) =   lp_dhyp;
        dlp_dhyps(:, i) =  dlp_dhyp;
@@ -351,7 +375,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     df_dtheta = S * dm;
 
-    % store if necessary
+    % store intermediate calculations if necessary
     if (compute_HnlZ)
       dms(:, i) = dm;
 
@@ -383,9 +407,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
   % converts to column vector
   vectorize = @(x) (x(:));
-
-  % computes diag(AB)
-  AB_diag = @(A, B) (sum(B .* A')');
 
   % computes diag(A diag(a) B diag(b))
   ADBD_diag = @(A, a, B, b) ((A .* B') * a .* b);
