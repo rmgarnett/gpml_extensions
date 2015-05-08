@@ -9,8 +9,7 @@
 % calculating the Hessian of K with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = ...
-%      ard_sqdexp_covariance(hyperparameters, x, z, i, j)
+%   dK2_didj = ard_sqdexp_covariance(theta, x, z, i, j)
 %
 % where dK2_didj is \partial^2 K / \partial \theta_i \partial \theta_j,
 % and the Hessian is evalauted at K(x, z). As in the derivative API,
@@ -23,11 +22,11 @@
 %
 % The hyperparameters are the same as for covSEard.
 %
-% See also COVFUNCTIONS.
+% See also COVSEARD, COVFUNCTIONS.
 
 % Copyright (c) 2013--2015 Roman Garnett.
 
-function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
+function result = ard_sqdexp_covariance(theta, x, z, i, j)
 
   % used during gradient and Hessian calculations to avoid constant recomputation
   persistent K;
@@ -36,31 +35,31 @@ function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
   if (nargin <= 1)
     result = covSEard;
   elseif (nargin == 2)
-    result = covSEard(hyperparameters, x);
+    result = covSEard(theta, x);
   elseif (nargin == 3)
-    result = covSEard(hyperparameters, x, z);
+    result = covSEard(theta, x, z);
   elseif (nargin == 4)
-    result = covSEard(hyperparameters, x, z, i);
+    result = covSEard(theta, x, z, i);
 
   % Hessian with respect to \theta_i \theta_j
   else
 
     % ensure i <= j by exploiting symmetry
     if (i > j)
-      result = ard_sqdexp_covariance(hyperparameters, x, z, j, i);
+      result = ard_sqdexp_covariance(theta, x, z, j, i);
       return;
     end
 
     % Hessians involving the log output scale
-    if (j == numel(hyperparameters))
-      result = 2 * covSEard(hyperparameters, x, z, i);
+    if (j == numel(theta))
+      result = 2 * covSEard(theta, x, z, i);
       return;
     end
 
     % precompute and store K for repeated reuse when the first
     % Hessian is requested
     if ((i == 1) && (j == 1))
-      K = covSEard(hyperparameters, x, z);
+      K = covSEard(theta, x, z);
     end
 
     % avoid if (isempty(z)) checks
@@ -68,8 +67,8 @@ function result = ard_sqdexp_covariance(hyperparameters, x, z, i, j)
       z = x;
     end
 
-    ell_i = exp(-hyperparameters(i));
-    ell_j = exp(-hyperparameters(j));
+    ell_i = exp(-theta(i));
+    ell_j = exp(-theta(j));
 
     first_factor = ...
         bsxfun(@minus, x(:, i) * ell_i, (z(:, i) * ell_i)').^2;
