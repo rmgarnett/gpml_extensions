@@ -22,8 +22,8 @@
 % additional optional arguments:
 %
 %   [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
-%       laplace_inference(theta, mean_function, ...
-%                         covariance_function, likelihood, x, y);
+%       laplace_inference(theta, mean_function, covariance_function, ...
+%                         likelihood, x, y);
 %
 % dalpha and dWinv provide the partial derivatives of the posterior
 % parameters \alpha and W^{-1} with respect to \theta. These
@@ -56,7 +56,7 @@
 %
 % where d2K_didj is \partial^2 K(x, x) / \partial \theta_i \partial \theta_j.
 %
-% Furhtermore, the likelihood must also support an extended GPML
+% Furthermore, the likelihood must also support an extended GPML
 % syntax for calculating further derivatives; a summary is below.
 %
 % The likelihood syntax with five outputs:
@@ -119,6 +119,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
           infLaplace(theta, mean_function, covariance_function, likelihood, x, y, options);
     end
 
+    % remember alpha for next call
     last_alpha = posterior.alpha;
     return;
   end
@@ -287,7 +288,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     dK = K(i);
 
     V_inv_dK = V_inv_times(dK);
-
     dK_alpha = dK * alpha;
 
     df_dtheta = S * dK_alpha;
