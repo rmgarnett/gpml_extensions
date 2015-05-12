@@ -2,59 +2,81 @@
 %
 % This provides a GPML-compatible inference method performing exact
 % inference with a Gaussian likelihood that supports an extended API
-% allowing the calculation of the Hessian of the negative log
-% likelihood at \theta. This can be used as a drop-in replacement for
-% infExact with no extra computational cost.
+% allowing the calculation of:
 %
-% See infMethods.m for help on GPML inference methods in general.
-% The Hessian of -\log p(y | X, \theta) may be calculated as the
-% fourth output of
+% - the partial derivatives of \alpha with respect to \theta,
+% - the partial derivatives of diag W^{-1} with respect to \theta, and
+% - the Hessian of the negative log likelihood at \theta.
 %
-%   [posterior, nlZ, dnlZ, HnlZ] = ...
-%       exact_inference(theta, mean_function, ...
-%                       covariance_function, likelihood, x, y);
+% The former two can be used to compute the gradient of the latent
+% predictive mean and variance of the approximate posterior GP with
+% respect to the hyperparameters.
 %
-% See hessians.m for information regarding the Hessian struct HnlZ.
+% This can be used as a drop-in replacement for infExact with no extra
+% computational cost.
 %
-% To use this functionality, both the mean and covariance functions
-% must support an extended GPML syntax that for calculating the
-% Hessian of the training mean mu or training covariance K with respect
-% to any pair of hyperparameters.  The syntax for mean functions
-% is:
+% Usage
+% -----
 %
-%   dmu_didj = mean_function(theta, x, i, j);
+% The API is identical to GPML inference methods, expect for three
+% additional optional arguments:
 %
-% where dmu_didj is \partial^2 mu(x) / \partial \theta_i \partial \theta_j.
+%   [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
+%       exact_inference(theta, mean_function, covariance_function, ...
+%                       likelihood, x, y);
+%
+% dalpha and dWinv provide the partial derivatives of the posterior
+% parameters \alpha and W^{-1} with respect to \theta. These
+% arrangement of these structs is similar to the dnlZ struct. For
+% example, dalpha.cov(:, 1) gives the derivative of \alpha with
+% respect to the first covariance hyperparameter.
+%
+% HnlZ provides the Hessian of -\log p(y | X, \theta). See hessians.m
+% for information regarding the Hessian struct HnlZ.
+%
+% Requirements
+% ------------
+%
+% The posterior derivatives dalpha and dWinv can be used with
+% unmodified GPML mean, covariance, and likelihood functions.
+%
+% To compute the Hessian HnlZ, both the mean and covariance functions
+% must support an extended GPML syntax that allows for calculating the
+% Hessian of the training mean mu or training covariance K with
+% respect to any pair of hyperparameters. The syntax for mean
+% functions is:
+%
+%   d2mu_didj = mean_function(theta, x, i, j);
+%
+% where d2mu_didj is \partial^2 mu(x) / \partial \theta_i \partial \theta_j.
 %
 % The syntax for covariance functions is similar:
 %
-%   dK2_didj = covariance_function(theta, x, [], i, j);
+%   d2K_didj = covariance_function(theta, x, [], i, j);
 %
-% where dK2_didj is \partial^2 K(x, x) / \partial \theta_i \partial \theta_j.
+% where d2K_didj is \partial^2 K(x, x) / \partial \theta_i \partial \theta_j.
 %
 % See also INFMETHODS, HESSIANS.
 
-% Copyright (c) 2013--2014 Roman Garnett.
+% Copyright (c) 2013--2015 Roman Garnett.
 
 function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
       exact_inference(theta, mean_function, covariance_function, ...
                       ~, x, y)
 
-  % If extended outputs not requested, simply call infExact and return.
+  % If additional outputs are not requested, simply call infExact and
+  % return.
   if (nargout <= 1)
     posterior = ...
-        infExact(theta, mean_function, covariance_function, ...
-                 'likGauss', x, y);
+        infExact(theta, mean_function, covariance_function, 'likGauss', x, y);
     return;
   elseif (nargout == 2)
     [posterior, nlZ] = ...
-        infExact(theta, mean_function, covariance_function, ...
-                 'likGauss', x, y);
+        infExact(theta, mean_function, covariance_function, 'likGauss', x, y);
     return;
   elseif (nargout == 3)
     [posterior, nlZ, dnlZ] = ...
-        infExact(theta, mean_function, covariance_function, ...
-                 'likGauss', x, y);
+        infExact(theta, mean_function, covariance_function, 'likGauss', x, y);
     return;
   end
 
@@ -258,7 +280,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     end
   end
 
-  % handle gradient/Hessian entries with respect tocovariance
+  % handle gradient/Hessian entries with respect to covariance
   % hyperparameters
   for i = 1:num_cov
     dK = K(i);
