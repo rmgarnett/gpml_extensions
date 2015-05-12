@@ -11,23 +11,21 @@
 % calculating the Hessian of \mu with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dK2_didj = constant_mean(hyperparameters, x, i, j);
+%   dm2_didj = constant_mean(theta, x, i, j)
 %
-% where dK2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
+% where dm2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
 % and the Hessian is evaluated at x.
 %
 % These Hessians can be used to ultimately compute the Hessian of the
 % GP training likelihood (see, for example, exact_inference.m).
 %
-% The hyperparameter is:
-%
-%   hyperparameter = [ c ].
+% The hyperparameters are the same as for meanConst.
 %
 % See also MEANCONST, MEANFUNCTIONS.
 
-% Copyright (c) 2014 Roman Garnett.
+% Copyright (c) 2014--2015 Roman Garnett.
 
-function result = constant_mean(hyperparameter, x, ~, ~)
+function result = constant_mean(theta, x, ~, ~)
 
   % report number of hyperparameters
   if (nargin <= 1)
@@ -39,13 +37,13 @@ function result = constant_mean(hyperparameter, x, ~, ~)
 
   % evaluate prior mean
   if (nargin == 2)
-    result = hyperparameter * ones(n, 1);
+    result = theta * ones(n, 1);
 
-  % evaluate derivative with respect to hyperparameter
+  % evaluate derivative with respect to theta
   elseif (nargin == 3)
     result = ones(n, 1);
 
-  % evaluate second derivative with respect to hyperparameter
+  % evaluate second derivative with respect to theta
   else
     result = zeros(n, 1);
   end

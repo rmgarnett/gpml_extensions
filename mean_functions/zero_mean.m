@@ -11,7 +11,7 @@
 % calculating the Hessian of \mu with respect to any pair of
 % hyperparameters. The syntax is:
 %
-%   dm2_didj = zero_mean(theta, x, i, j);
+%   dm2_didj = zero_mean(theta, x, i, j)
 %
 % where dm2_didj is \partial^2 \mu / \partial \theta_i \partial \theta_j,
 % and the Hessian is evaluated at x.

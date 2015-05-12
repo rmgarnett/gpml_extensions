@@ -17,7 +17,7 @@
 
 % Copyright (c) 2012--2014 Roman Garnett.
 
-function result = fixed_discrete_mean(mu, ~, x, ~)
+function result = fixed_discrete_mean(mu, ~, x, ~, ~)
 
   % check for mean vector
   if (nargin == 0)

@@ -5,9 +5,9 @@
 %
 % The hyperparameters are:
 %
-%   hyperparameters = [ c_1
-%                       c_2
-%                       t   ],
+%   theta = [ c_1
+%             c_2
+%             t   ],
 %
 % where t is the changepoint time.
 %
@@ -16,9 +16,9 @@
 %
 % See also MEANFUNCTIONS.
 
-% Copyright (c) 2012--2014 Roman Garnett.
+% Copyright (c) 2012--2015 Roman Garnett.
 
-function result = step_mean(changepoint_dimension, hyperparameters, x, i)
+function result = step_mean(changepoint_dimension, theta, x, i, ~)
 
   % check for changepoint dimension
   if (nargin == 0)
@@ -32,9 +32,9 @@ function result = step_mean(changepoint_dimension, hyperparameters, x, i)
     return;
   end
 
-  c_1 = hyperparameters(1);
-  c_2 = hyperparameters(2);
-  t   = hyperparameters(3);
+  c_1 = theta(1);
+  c_2 = theta(2);
+  t   = theta(3);
 
   before_ind = (x(:, changepoint_dimension) < t);
   after_ind  = ~before_ind;
@@ -46,8 +46,8 @@ function result = step_mean(changepoint_dimension, hyperparameters, x, i)
     result(before_ind) = c_1;
     result(after_ind)  = c_2;
 
-  % evaluate derivatives with respect to hyperparameters
-  else
+  % evaluate derivatives with respect to theta
+  elseif (nargin == 4)
     % before constant
     if (i == 1)
       result(before_ind) = 1;
@@ -55,6 +55,10 @@ function result = step_mean(changepoint_dimension, hyperparameters, x, i)
     elseif (i == 2)
       result(after_ind) = 1;
     end
+
+  % evaluate Hessian with respect to theta
+  else
+    % result contains correct value
   end
 
 end
