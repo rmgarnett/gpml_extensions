@@ -163,6 +163,9 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     HnlZ.mean_ind       = mean_ind;
   end
 
+  % indices of the diagonal entries of an (n x n) matrix
+  diag_ind = (1:(n + 1):(n * n))';
+
   % computes diag(d) * A
   DA = @(d, A) bsxfun(@times, d(:), A);
 
@@ -171,9 +174,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
   % computes diag(d) * A * diag(d)
   DAD = @(d, A) DA(d, AD(A, d));
-
-  % indices of the diagonal entries of an (n x n) matrix
-  diag_ind = (1:(n + 1):(n * n))';
 
   % computes diag(AB)
   AB_diag = @(A, B) (sum(B .* A')');
@@ -193,7 +193,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
   if (compute_HnlZ)
 
     % add some jitter to avoid tiny eigenvalues
-    jitter = 1e-6;
+    jitter = 1e-8;
     K_x(diag_ind) = K_x(diag_ind) + jitter;
 
     % symmetrize
@@ -261,7 +261,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
             solve_chol(posterior.L, DA(posterior.sW, x))));
     V_inv = V_inv_times(I);
 
-    S = -K_x * V_inv;
+    S = -V_inv_times(K_x)';
     S(diag_ind) = S(diag_ind) + 1;
   end
 
@@ -280,7 +280,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
   nlZ = -sum(lp) + 0.5 * (alpha' * (f - mu_x) + log_det_B);
 
-  dL_df = (0.5 * a_inv .* d3lp)';
+  dL_df = 0.5 * (a_inv .* d3lp)';
 
   implicit_gradient = @(df_dtheta) -(dL_df * df_dtheta);
 
@@ -316,16 +316,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     df_dtheta = S * dK_alpha;
 
-    % store intermediate calculations if necessary
-    if (compute_HnlZ)
-      dKs(:, :, i) = dK;
-
-      V_inv_dKs(:, :, i) = V_inv_dK;
-      K_inv_dKs(:, :, i) = K_inv_times(dK);
-
-      df_dthetas(:, covariance_ind(i)) = df_dtheta;
-    end
-
     dnlZ.cov(i) = 0.5 * (trace(V_inv_dK) - alpha' * dK_alpha) + ...
         implicit_gradient(df_dtheta);
 
@@ -335,6 +325,16 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     if (compute_dWinv)
       dWinv.cov(:, i) = d3lp .* df_dtheta;
+    end
+
+    % store intermediate calculations if necessary
+    if (compute_HnlZ)
+      dKs(:, :, i) = dK;
+
+      V_inv_dKs(:, :, i) = V_inv_dK;
+      K_inv_dKs(:, :, i) = K_inv_times(dK);
+
+      df_dthetas(:, covariance_ind(i)) = df_dtheta;
     end
   end
 
@@ -349,15 +349,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     df_dtheta = S * (K_x * dlp_dhyp);
 
-    % store intermediate calculations if necessary
-    if (compute_HnlZ)
-        lp_dhyps(:, i) =   lp_dhyp;
-       dlp_dhyps(:, i) =  dlp_dhyp;
-      d2lp_dhyps(:, i) = d2lp_dhyp;
-
-      df_dthetas(:, likelihood_ind(i)) = df_dtheta;
-    end
-
     dnlZ.lik(i) = -sum(lp_dhyp) - 0.5 * a_inv' * d2lp_dhyp + ...
         implicit_gradient(df_dtheta);
 
@@ -368,19 +359,21 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     if (compute_dWinv)
       dWinv.lik(:, i) = d2lp_dhyp + d3lp .* df_dtheta;
     end
+
+    % store intermediate calculations if necessary
+    if (compute_HnlZ)
+        lp_dhyps(:, i) =   lp_dhyp;
+       dlp_dhyps(:, i) =  dlp_dhyp;
+      d2lp_dhyps(:, i) = d2lp_dhyp;
+
+      df_dthetas(:, likelihood_ind(i)) = df_dtheta;
+    end
   end
 
   for i = 1:num_mean
     dm = mu(i);
 
     df_dtheta = S * dm;
-
-    % store intermediate calculations if necessary
-    if (compute_HnlZ)
-      dms(:, i) = dm;
-
-      df_dthetas(:, mean_ind(i)) = df_dtheta;
-    end
 
     dnlZ.mean(i) = -alpha' * dm + implicit_gradient(df_dtheta);
 
@@ -390,6 +383,13 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
     if (compute_dWinv)
       dWinv.mean(:, i) = d3lp .* df_dtheta;
+    end
+
+    % store intermediate calculations if necessary
+    if (compute_HnlZ)
+      dms(:, i) = dm;
+
+      df_dthetas(:, mean_ind(i)) = df_dtheta;
     end
   end
 
@@ -408,9 +408,6 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
   % converts to column vector
   vectorize = @(x) (x(:));
 
-  % computes diag(A diag(a) B diag(b))
-  ADBD_diag = @(A, a, B, b) ((A .* B') * a .* b);
-
   % computes tr(AB)
   AB_trace = @(A, B) (vectorize(A')' * B(:));
 
@@ -419,6 +416,8 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
 
   d2f_dtheta2s   = zeros(n, num_hyperparameters, num_hyperparameters);
   d2L_dtheta_dfs = zeros(num_hyperparameters, n);
+
+  A_inv_d3lp = AD(A_inv, d3lp);
 
   for i = 1:num_cov
     ind_i = covariance_ind(i);
@@ -486,7 +485,7 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
     d2L_dtheta_dfs(ind_i, :) = ...
         (dlp_dhyps(:, i) + ...
          0.5 * (a_inv .* d3lp_dhyps(:, i) + ...
-                ADBD_diag(A_inv, d2lp_dhyps(:, i), A_inv, d3lp)))';
+                AB_diag(AD(A_inv, d2lp_dhyps(:, i)), A_inv_d3lp)))';
 
     for j = i:num_lik
       ind_j = likelihood_ind(j);
@@ -536,33 +535,20 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
   end
 
   % correct Hessian due to dependence of \hat{f} on \theta
-  A = K_inv_times(I);
-  A(diag_ind) = A(diag_ind) + w;
-
-  d2L_df2 = -A;
-  d2L_df2(diag_ind) = d2L_df2(diag_ind) + ...
-      0.5 * (a_inv .* d4lp + ...
-             ADBD_diag(A_inv, d3lp, A_inv, d3lp));
-
-  implicit_hessian  = ...
-      @(df_dtheta_i, df_dtheta_j, ...
-        d2f_dtheta_i_dtheta_j, ...
-        d2L_dtheta_i_df, d2L_dtheta_j_df) ...
-      -(          dL_df * d2f_dtheta_i_dtheta_j + ...
-           df_dtheta_i' * d2L_df2 * df_dtheta_j + ...
-        d2L_dtheta_i_df * df_dtheta_j           + ...
-        d2L_dtheta_j_df * df_dtheta_i);
+  d2log_det_B_df2 = 0.5 * A_inv_d3lp .* A_inv_d3lp';
+  d2log_det_B_df2(diag_ind) = d2log_det_B_df2(diag_ind) + ...
+      0.5 * (a_inv .* d4lp);
 
   for i = 1:num_hyperparameters
+    d2L_df2_df_dtheta_i = ...
+        -(A_inv \ df_dthetas(:, i)) + d2log_det_B_df2 * df_dthetas(:, i);
+
     for j = i:num_hyperparameters
-      HnlZ.value(i, j) = HnlZ.value(i, j) + ...
-          implicit_hessian(          ...
-              df_dthetas(:, i),      ...
-              df_dthetas(:, j),      ...
-              d2f_dtheta2s(:, i, j), ...
-              d2L_dtheta_dfs(i, :),  ...
-              d2L_dtheta_dfs(j, :)   ...
-              );
+      HnlZ.value(i, j) = HnlZ.value(i, j)         - ...
+          dL_df * d2f_dtheta2s(:, i, j)           - ...
+          d2L_df2_df_dtheta_i' * df_dthetas(:, j) - ...
+          d2L_dtheta_dfs(i, :) * df_dthetas(:, j) - ...
+          d2L_dtheta_dfs(j, :) * df_dthetas(:, i);
     end
   end
 
