@@ -32,31 +32,32 @@
 % Usage
 % -----
 %
-%   [nlZ, dnlZ, HnlZ] = gp_optimizer_wrapper(hyperparameter_values, ...
-%           prototype_hyperparameters, inference_method, mean_function, ...
+%   [nlZ, dnlZ, HnlZ] = gp_optimizer_wrapper(theta_values, ...
+%           prototype_theta, inference_method, mean_function, ...
 %           covariance_function, likelihood, x, y)
 %
 % Inputs:
 %
-%       hyperparameter_values: a (row or column) vector specifying all
-%                              hyperparameters, in the order returned by
-%                              unwrap(prototype_hyperparameters)
-%   prototype_hyperparameters: any GPML hyperparameter struct
-%                              compatible specified with the GP model;
-%                              that is, the lengths of the vectors
+%          theta_values: a (row or column) vector specifying all
+%                        hyperparameters, in the order returned by
+%                        unwrap(prototype_theta)
+%       prototype_theta: any GPML hyperparameter struct compatible
+%                        specified with the GP model; that is, the lengths
+%                        of the vectors
 %
-%                                prototype_hyperparameters.mean
-%                                prototype_hyperparameters.cov
-%                                prototype_hyperparameters.lik
+%                          prototype_theta.mean
+%                          prototype_theta.cov
+%                          prototype_theta.lik
 %
-%                              need to be correct (the actual values
-%                              will not be used).
-%            inference_method: a GPML inference method
-%               mean_function: a GPML mean function
-%         covariance_function: a GPML covariance function
-%                  likelihood: a GPML likelihood
-%                           x: training observation locations (N x D)
-%                           y: training observation values (N x 1)
+%                        need to be correct (the actual values will
+%                        not be used).
+%      inference_method: a GPML inference method
+%         mean_function: a GPML mean function
+%   covariance_function: a GPML covariance function
+%            likelihood: a GPML likelihood
+%                     x: training observation locations (N x D)
+%                     y: training observation values (N x 1) or GPML
+%                        posterior struct
 %
 % Outputs:
 %
@@ -72,28 +73,31 @@
 
 % Copyright (c) 2014 Roman Garnett.
 
-function [nlZ, dnlZ, HnlZ] = gp_optimizer_wrapper(hyperparameter_values, ...
-          prototype_hyperparameters, inference_method, mean_function, ...
+function [nlZ, dnlZ, HnlZ] = gp_optimizer_wrapper(theta_values, ...
+          prototype_theta, inference_method, mean_function, ...
           covariance_function, likelihood, x, y)
 
-  hyperparameters = rewrap(prototype_hyperparameters, ...
-                           hyperparameter_values(:));
+  theta = rewrap(prototype_theta, theta_values(:));
+
+  % perform initial argument checks/transformations
+  [theta, inference_method, mean_function, covariance_function, ...
+   likelihood] = check_arguments(theta, inference_method, mean_function, ...
+          covariance_function, likelihood, x);
+
+  f = @() (feval(inference_method{:}, theta, mean_function, ...
+                 covariance_function, likelihood, x, y));
 
   if (nargout <= 1)
-    [~, nlZ] = inference_method(hyperparameters, mean_function, ...
-            covariance_function, likelihood, x, y);
-
+    [~, nlZ] = f();
     return;
 
   elseif (nargout == 2)
-    [~, nlZ, dnlZ] = inference_method(hyperparameters, mean_function, ...
-            covariance_function, likelihood, x, y);
+    [~, nlZ, dnlZ] = f();
 
   elseif (nargout > 2)
-    [~, nlZ, dnlZ, HnlZ] = inference_method(hyperparameters, mean_function, ...
-            covariance_function, likelihood, x, y);
+    [~, nlZ, dnlZ, ~, ~, HnlZ] = f();
 
-    HnlZ = HnlZ.H;
+    HnlZ = HnlZ.value;
   end
 
   dnlZ = unwrap(dnlZ);
