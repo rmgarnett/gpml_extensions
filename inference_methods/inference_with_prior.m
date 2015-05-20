@@ -122,9 +122,13 @@ function [posterior, nlZ, dnlZ, dalpha, dWinv, HnlZ] = ...
   nlZ = nlZ - prior_lp;
 
   % merge gradient structs
-  fields = fieldnames(theta);
+  fields = {'cov', 'lik', 'mean'};
   for i = 1:numel(fields)
     field = fields{i};
+
+    if (~isfield(dnlZ, field))
+      continue;
+    end
 
     dnlZ.(field) = dnlZ.(field) - prior_dlp.(field);
   end
